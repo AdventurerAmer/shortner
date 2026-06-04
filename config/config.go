@@ -6,7 +6,9 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/joho/godotenv"
+	"github.com/knadh/koanf/parsers/yaml"
 	"github.com/knadh/koanf/providers/env/v2"
+	"github.com/knadh/koanf/providers/file"
 	"github.com/knadh/koanf/v2"
 )
 
@@ -25,9 +27,9 @@ const (
 var Envs = []Env{EnvLocal, EnvStaging, EnvProd}
 
 type AppConfig struct {
-	Name        string `koanf:"name"`
-	Environment Env    `koanf:"env"`
-	Version     string `koanf:"version"`
+	Name        string `koanf:"name" validate:"required,min=1,max=100"`
+	Environment Env    `koanf:"env" validate:"required,oneof=local staging production"`
+	Version     string `koanf:"version" validate:"required,semver"`
 }
 
 type Config struct {
@@ -35,12 +37,16 @@ type Config struct {
 }
 
 func Load() (*Config, error) {
-	if err := godotenv.Load(".env.local"); err != nil {
+	if err := godotenv.Load(".env"); err != nil {
 		return nil, fmt.Errorf("failed to load env vars: %w", err)
 	}
 
 	delim := "."
 	k := koanf.New(delim)
+
+	if err := k.Load(file.Provider("config.yaml"), yaml.Parser()); err != nil {
+		return nil, fmt.Errorf("failed to load config.yaml: %w", err)
+	}
 
 	envPrefix := "SHORTNER_"
 	envDelim := "_"
