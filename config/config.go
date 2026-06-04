@@ -27,13 +27,26 @@ const (
 var Envs = []Env{EnvLocal, EnvStaging, EnvProd}
 
 type AppConfig struct {
-	Name        string `koanf:"name" validate:"required,min=1,max=100"`
+	Name        string `koanf:"name" validate:"required,min=1,max=128"`
 	Environment Env    `koanf:"env" validate:"required,oneof=local staging production"`
 	Version     string `koanf:"version" validate:"required,semver"`
 }
 
+type LoggingConfig struct {
+	Level     string `koanf:"level" validate:"oneof=debug info warn error"`
+	Format    string `koanf:"format" validate:"oneof=json text"`
+	AddSource *bool  `koanf:"addSource"`
+}
+
+type TracingConfig struct {
+	Enabled  bool   `koanf:"enabled"`
+	Endpoint string `koanf:"endpoint" validate:"required,url"`
+}
+
 type Config struct {
-	App AppConfig `koanf:"app"`
+	App     AppConfig     `koanf:"app"`
+	Logging LoggingConfig `koanf:"logging"`
+	Tracing TracingConfig `koanf:"tracing"`
 }
 
 func Load() (*Config, error) {
@@ -78,7 +91,7 @@ func Load() (*Config, error) {
 
 	setDefaults(&cfg)
 
-	if err := validator.New().Struct(&cfg); err != nil {
+	if err := validator.New().Struct(cfg); err != nil {
 		return nil, fmt.Errorf("failed to validate config: %w", err)
 	}
 
@@ -94,5 +107,28 @@ func setDefaults(cfg *Config) {
 	}
 	if cfg.App.Version == "" {
 		cfg.App.Version = "0.1.0"
+	}
+	if cfg.Logging.Level == "" {
+		if cfg.App.Environment == EnvLocal {
+			cfg.Logging.Level = "debug"
+		} else {
+			cfg.Logging.Level = "info"
+		}
+	}
+	if cfg.Logging.Format == "" {
+		if cfg.App.Environment == EnvLocal {
+			cfg.Logging.Format = "text"
+		} else {
+			cfg.Logging.Format = "json"
+		}
+	}
+	if cfg.Logging.AddSource == nil {
+		if cfg.App.Environment == EnvLocal || cfg.App.Environment == EnvStaging {
+			t := true
+			cfg.Logging.AddSource = &t
+		} else {
+			t := false
+			cfg.Logging.AddSource = &t
+		}
 	}
 }

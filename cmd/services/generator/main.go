@@ -1,17 +1,21 @@
 package main
 
 import (
-	"log/slog"
+	"fmt"
 	"os"
 
 	"github.com/AdventurerAmer/shortner/config"
+	"github.com/AdventurerAmer/shortner/logging"
 )
 
 func main() {
 	cfg, err := config.Load()
 	if err != nil {
-		slog.Error("load config failed", "error", err)
+		fmt.Fprintf(os.Stderr, "failed to load config: %+v\n", err)
 		os.Exit(1)
 	}
-	slog.Info("config was loaded successfully", "config", cfg)
+
+	logging.New(cfg)
+
+	logging.Info("config was loaded successfully", "environment", cfg.App.Environment, "version", cfg.App.Version)
 }
