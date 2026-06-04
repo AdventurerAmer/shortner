@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/knadh/koanf/parsers/dotenv"
-	"github.com/knadh/koanf/providers/file"
+	"github.com/joho/godotenv"
+	"github.com/knadh/koanf/providers/env/v2"
 	"github.com/knadh/koanf/v2"
 )
 
@@ -35,30 +35,42 @@ type Config struct {
 }
 
 func Load() (*Config, error) {
+	if err := godotenv.Load(".env.local"); err != nil {
+		return nil, fmt.Errorf("failed to load env vars: %w", err)
+	}
+
 	delim := "."
 	k := koanf.New(delim)
 
 	envPrefix := "SHORTNER_"
 	envDelim := "_"
-	envParser := dotenv.ParserEnv(envPrefix, envDelim, func(s string) string {
-		s = strings.TrimPrefix(s, envPrefix)
-		s = strings.ReplaceAll(s, envDelim, delim)
-		s = strings.ToLower(s)
-		return s
-	})
-	if err := k.Load(file.Provider(".env.local"), envParser); err != nil {
-		return nil, fmt.Errorf("failed to load env vars: %w", err)
+
+	envOpt := env.Opt{
+		Prefix: envPrefix,
+		TransformFunc: func(k, v string) (string, any) {
+			k = strings.TrimPrefix(k, envPrefix)
+			k = strings.ReplaceAll(k, envDelim, delim)
+			k = strings.ToLower(k)
+			if strings.Contains(v, " ") {
+				return k, strings.Split(v, " ")
+			}
+			return k, v
+		},
+	}
+	err := k.Load(env.Provider(".", envOpt), nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse env vars: %w", err)
 	}
 
-	var cfg Config
 	unmarshalConf := koanf.UnmarshalConf{
 		Tag: "koanf",
 	}
+	var cfg Config
 	if err := k.UnmarshalWithConf("", &cfg, unmarshalConf); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
 
-	// setDefaults(&cfg)
+	setDefaults(&cfg)
 
 	if err := validator.New().Struct(&cfg); err != nil {
 		return nil, fmt.Errorf("failed to validate config: %w", err)
