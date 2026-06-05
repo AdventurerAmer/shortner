@@ -47,19 +47,19 @@ func Error(msg string, args ...any) {
 	slog.Error(msg, args...)
 }
 
-func DebugContext(ctx context.Context, msg string, args ...any) {
+func DebugCtx(ctx context.Context, msg string, args ...any) {
 	slog.DebugContext(ctx, msg, args...)
 }
 
-func InfoContext(ctx context.Context, msg string, args ...any) {
+func InfoCtx(ctx context.Context, msg string, args ...any) {
 	slog.InfoContext(ctx, msg, args...)
 }
 
-func WarnContext(ctx context.Context, msg string, args ...any) {
+func WarnCtx(ctx context.Context, msg string, args ...any) {
 	slog.WarnContext(ctx, msg, args...)
 }
 
-func ErrorContext(ctx context.Context, msg string, args ...any) {
+func ErrorCtx(ctx context.Context, msg string, args ...any) {
 	slog.ErrorContext(ctx, msg, args...)
 }
 
@@ -80,9 +80,10 @@ func replaceAttrLocal(groups []string, attr slog.Attr) slog.Attr {
 	switch attr.Key {
 	case slog.SourceKey:
 		if source, ok := attr.Value.Any().(*slog.Source); ok {
+			parentPath := filepath.Dir(source.File)
+			parentName := filepath.Base(parentPath)
 			filename := filepath.Base(source.File)
-			parentPath := filepath.Base(filepath.Dir(source.File))
-			source.File = filepath.Join(parentPath, filename)
+			source.File = filepath.Join(parentName, filename)
 		}
 	case slog.TimeKey:
 		if len(groups) == 0 {

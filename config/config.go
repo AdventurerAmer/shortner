@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/joho/godotenv"
@@ -43,10 +44,26 @@ type TracingConfig struct {
 	Endpoint string `koanf:"endpoint" validate:"required,url"`
 }
 
+type ServiceConfig struct {
+	Name                    *string        `koanf:"name" validate:"required,min=1,max=128"`
+	Port                    *int           `koanf:"port" validate:"required,min=1,max=65535"`
+	MaxHeaderBytes          *int           `koanf:"maxHeaderBytes" validate:"min=1"`
+	ReadHeaderTimeout       *time.Duration `koanf:"ReadHeaderTimeout" validate:"min=1"`
+	ReadTimeout             *time.Duration `koanf:"readTimeout" validate:"min=1"`
+	WriteTimeout            *time.Duration `koanf:"writeTimeout" validate:"min=1"`
+	IdelTimeout             *time.Duration `koanf:"idelTimeout" validate:"min=1"`
+	GracefulShutdownTimeout *time.Duration `koanf:"gracefulShutdownTimeout" validate:"min=1"`
+}
+
+type ServicesConfig struct {
+	Shortening ServiceConfig `koanf:"shortening"`
+}
+
 type Config struct {
-	App     AppConfig     `koanf:"app"`
-	Logging LoggingConfig `koanf:"logging"`
-	Tracing TracingConfig `koanf:"tracing"`
+	App      AppConfig      `koanf:"app"`
+	Logging  LoggingConfig  `koanf:"logging"`
+	Tracing  TracingConfig  `koanf:"tracing"`
+	Services ServicesConfig `koanf:"services"`
 }
 
 func Load() (*Config, error) {
@@ -102,12 +119,15 @@ func setDefaults(cfg *Config) {
 	if cfg.App.Name == "" {
 		cfg.App.Name = "Shortner"
 	}
+
 	if cfg.App.Environment == "" {
 		cfg.App.Environment = EnvLocal
 	}
+
 	if cfg.App.Version == "" {
 		cfg.App.Version = "0.1.0"
 	}
+
 	if cfg.Logging.Level == "" {
 		if cfg.App.Environment == EnvLocal {
 			cfg.Logging.Level = "debug"
@@ -115,6 +135,7 @@ func setDefaults(cfg *Config) {
 			cfg.Logging.Level = "info"
 		}
 	}
+
 	if cfg.Logging.Format == "" {
 		if cfg.App.Environment == EnvLocal {
 			cfg.Logging.Format = "text"
@@ -122,13 +143,53 @@ func setDefaults(cfg *Config) {
 			cfg.Logging.Format = "json"
 		}
 	}
+
 	if cfg.Logging.AddSource == nil {
-		if cfg.App.Environment == EnvLocal || cfg.App.Environment == EnvStaging {
-			t := true
-			cfg.Logging.AddSource = &t
-		} else {
-			t := false
-			cfg.Logging.AddSource = &t
-		}
+		addSource := (cfg.App.Environment == EnvLocal || cfg.App.Environment == EnvStaging)
+		cfg.Logging.AddSource = &addSource
+	}
+
+	setServiceDefaults(&cfg.Services.Shortening)
+}
+
+func setServiceDefaults(cfg *ServiceConfig) {
+	if cfg.Name == nil {
+		name := "service"
+		cfg.Name = &name
+	}
+
+	if cfg.Port == nil {
+		port := 3030
+		cfg.Port = &port
+	}
+
+	if cfg.MaxHeaderBytes == nil {
+		maxMaxHeaderBytes := 1024 * 1024 // 1MB
+		cfg.MaxHeaderBytes = &maxMaxHeaderBytes
+	}
+
+	if cfg.ReadHeaderTimeout == nil {
+		readHeaderTimeout := time.Second
+		cfg.ReadHeaderTimeout = &readHeaderTimeout
+	}
+
+	if cfg.ReadTimeout == nil {
+		readTimeout := time.Second
+		cfg.ReadTimeout = &readTimeout
+	}
+
+	if cfg.WriteTimeout == nil {
+		writeTimeout := time.Second
+		cfg.WriteTimeout = &writeTimeout
+	}
+
+	if cfg.IdelTimeout == nil {
+		idelTimeout := time.Minute
+		cfg.IdelTimeout = &idelTimeout
+	}
+
+	if cfg.GracefulShutdownTimeout == nil {
+		gracefulShutdownTimeout := 10 * time.Second
+		cfg.GracefulShutdownTimeout = &gracefulShutdownTimeout
 	}
 }

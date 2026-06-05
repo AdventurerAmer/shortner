@@ -1,3 +1,8 @@
 app:
   name: "Shortner"
-  version: 0.1.0
+  version: 0.1.1
+
+services:
+  shortening:
+    name: "shortening"
+    port: 3030

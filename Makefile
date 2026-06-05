@@ -1,3 +1,3 @@
-PHONY: run_generator
-run_generator:
-	@go run ./cmd/services/generator
+PHONY: shortening
+shortening:
+	@go run ./cmd/services/shortening
