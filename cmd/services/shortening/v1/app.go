@@ -19,7 +19,11 @@ func Run() int {
 	logger := logging.New(cfg)
 
 	app := web.New(logger, &cfg.Services.Shortening)
-	app.Run(nil)
+
+	mux := web.NewMux()
+	mux.Get("/health", app.DefaultHealthHandler)
+
+	app.Run(mux)
 
 	return 0
 }

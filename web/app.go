@@ -26,7 +26,7 @@ func New(logger *logging.Logger, cfg *config.ServiceConfig) *App {
 	return app
 }
 
-func (app *App) Run(router http.HandlerFunc) {
+func (app *App) Run(router http.Handler) {
 	cfg := app.Cfg
 	logger := app.Logger
 

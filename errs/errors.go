@@ -7,7 +7,8 @@ import (
 type Code int
 
 const (
-	CodeResourceNotFound Code = iota
+	CodeInternal Code = iota
+	CodeResourceNotFound
 )
 
 func (c Code) String() string {
@@ -19,9 +20,9 @@ func (c Code) String() string {
 }
 
 type Error struct {
-	Code    Code
-	Message string
-	Err     error
+	Code    Code   `json:"code"`
+	Message string `json:"message"`
+	Err     error  `json:"-"`
 }
 
 func New(code Code, message string) *Error {
