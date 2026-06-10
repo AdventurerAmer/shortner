@@ -1,0 +1,44 @@
+version: '3.8'
+name: "shortner"
+
+services:
+  cassandra:
+    image: cassandra:5.0.8
+    ports:
+      - "9042:9042"
+    environment:
+      CASSANDRA_CLUSTER_NAME: "local-cluster"
+      CASSANDRA_DC: "datacenter1"
+      CASSANDRA_ENDPOINT_SNITCH: GossipingPropertyFileSnitch
+      HEAP_NEWSIZE: "128M"
+      MAX_HEAP_SIZE: "512M"
+    volumes:
+      - cassandra_data:/var/lib/cassandra
+      - ./init/cassandra:/docker-entrypoint-initdb.d
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "nodetool status"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+
+  cassandra-init:
+    image: cassandra:5.0.8
+    depends_on:
+      cassandra:
+        condition: service_healthy
+    volumes:
+      - ./init/cassandra:/init
+    entrypoint: >
+      bash -c "
+        echo 'Running CQL init scripts...' &&
+        for f in /init/*.cql; do
+          echo \"Executing $$f\" && cqlsh cassandra -f $$f;
+        done &&
+        echo 'Init complete.'
+      "
+    restart: on-failure
+
+volumes:
+  cassandra_data:

@@ -37,8 +37,10 @@ func (m *Mux) Delete(route string, handler Handler) {
 
 type Handler = func(r *http.Request) (any, int, error)
 
-func errCodeToHTTPStatus(code errs.Code) int {
+func statusfromErrCode(code errs.Code) int {
 	switch code {
+	case errs.CodeInternal:
+		return http.StatusInternalServerError
 	case errs.CodeResourceNotFound:
 		return http.StatusNotFound
 	}
@@ -48,27 +50,24 @@ func errCodeToHTTPStatus(code errs.Code) int {
 func composeHTTPHandlerFunc(handler Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("Content-Type", "application/json")
-
-		resp, status, err := handler(r)
+		var (
+			resp   any
+			status int
+			err    error
+		)
+		resp, status, err = handler(r)
 		if err != nil {
 			var appErr *errs.Error
-			status := http.StatusInternalServerError
-			if errors.As(err, &appErr) {
-				status = errCodeToHTTPStatus(appErr.Code)
-			} else {
-				appErr = &errs.Error{
-					Code:    errs.CodeInternal,
-					Message: "internal server error",
-				}
+			if !errors.As(err, &appErr) {
+				appErr = errs.Wrap(err, errs.CodeInternal, "internal server error")
 			}
-			b, _ := json.Marshal(appErr)
-			w.WriteHeader(status)
-			w.Write(b)
-			return
+			status = statusfromErrCode(appErr.Code)
+			resp = appErr
 		}
 
-		b, _ := json.Marshal(resp)
+		// TODO: ignoring errors here
+		b, err := json.Marshal(resp)
 		w.WriteHeader(status)
-		w.Write(b)
+		_, err = w.Write(b)
 	}
 }

@@ -1,8 +1,15 @@
 app:
-  name: "Shortner"
+  name: Shortner
   version: 0.1.1
 
 services:
   shortening:
-    name: "shortening"
+    name: shortening
     port: 3030
+  
+infrastructure:
+  database:
+    host: localhost
+    port: 9042
+    keyspace: shortner
+    connTimeout: 1s

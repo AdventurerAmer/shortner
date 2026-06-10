@@ -12,21 +12,21 @@ import (
 type Logger = slog.Logger
 
 func New(cfg *config.Config) *Logger {
-	level := parseLevel(cfg.Logging.Level)
+	level := parseLevel(cfg.Observability.Logging.Level)
 
 	replaceAttr := replaceAttrNonLocal
-	if cfg.App.Environment == config.EnvLocal {
+	if cfg.Env == config.EnvLocal {
 		replaceAttr = replaceAttrLocal
 	}
 
 	opts := &slog.HandlerOptions{
 		Level:       level,
-		AddSource:   *cfg.Logging.AddSource,
+		AddSource:   *cfg.Observability.Logging.AddSource,
 		ReplaceAttr: replaceAttr,
 	}
 
 	var handler slog.Handler
-	if cfg.Logging.Format == "text" {
+	if cfg.Observability.Logging.Format == "text" {
 		handler = slog.NewTextHandler(os.Stdout, opts)
 	} else {
 		handler = slog.NewJSONHandler(os.Stdout, opts)

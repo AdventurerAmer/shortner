@@ -13,6 +13,8 @@ const (
 
 func (c Code) String() string {
 	switch c {
+	case CodeInternal:
+		return "INTERNAL"
 	case CodeResourceNotFound:
 		return "RESOURCE_NOT_FOUND"
 	}
@@ -45,6 +47,11 @@ func (e *Error) Error() string {
 		return fmt.Sprintf("%s: %+v", e.Message, e.Err)
 	}
 	return e.Message
+}
+
+func (e *Error) Is(target error) bool {
+	_, ok := target.(*Error)
+	return ok
 }
 
 func (e *Error) Unwrap() error {

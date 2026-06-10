@@ -27,43 +27,33 @@ const (
 
 var Envs = []Env{EnvLocal, EnvStaging, EnvProd}
 
+type Config struct {
+	Env            Env                  `koanf:"env" validate:"required,oneof=local staging production"`
+	App            AppConfig            `koanf:"app"`
+	Observability  ObservabilityConfig  `koanf:"observability"`
+	Services       ServicesConfig       `koanf:"services"`
+	Infrastructure InfrastructureConfig `koanf:"infrastructure"`
+}
+
 type AppConfig struct {
-	Name        string `koanf:"name" validate:"required,min=1,max=128"`
-	Environment Env    `koanf:"env" validate:"required,oneof=local staging production"`
-	Version     string `koanf:"version" validate:"required,semver"`
-}
-
-type LoggingConfig struct {
-	Level     string `koanf:"level" validate:"oneof=debug info warn error"`
-	Format    string `koanf:"format" validate:"oneof=json text"`
-	AddSource *bool  `koanf:"addSource"`
-}
-
-type TracingConfig struct {
-	Enabled  bool   `koanf:"enabled"`
-	Endpoint string `koanf:"endpoint" validate:"required,url"`
+	Name    string `koanf:"name" validate:"required,min=1,max=128"`
+	Version string `koanf:"version" validate:"required,semver"`
 }
 
 type ServiceConfig struct {
-	Name                    *string        `koanf:"name" validate:"required,min=1,max=128"`
-	Port                    *int           `koanf:"port" validate:"required,min=1,max=65535"`
-	MaxHeaderBytes          *int           `koanf:"maxHeaderBytes" validate:"min=1"`
-	ReadHeaderTimeout       *time.Duration `koanf:"ReadHeaderTimeout" validate:"min=1"`
-	ReadTimeout             *time.Duration `koanf:"readTimeout" validate:"min=1"`
-	WriteTimeout            *time.Duration `koanf:"writeTimeout" validate:"min=1"`
-	IdelTimeout             *time.Duration `koanf:"idelTimeout" validate:"min=1"`
-	GracefulShutdownTimeout *time.Duration `koanf:"gracefulShutdownTimeout" validate:"min=1"`
+	Name                    string        `koanf:"name" validate:"required,min=1,max=128"`
+	Port                    int           `koanf:"port" validate:"required,min=1,max=65535"`
+	MaxHeaderBytes          int           `koanf:"maxHeaderBytes" validate:"required,min=1"`
+	ReadHeaderTimeout       time.Duration `koanf:"ReadHeaderTimeout" validate:"required,min=1s"`
+	ReadTimeout             time.Duration `koanf:"readTimeout" validate:"required,min=1s"`
+	WriteTimeout            time.Duration `koanf:"writeTimeout" validate:"required,min=1s"`
+	IdelTimeout             time.Duration `koanf:"idelTimeout" validate:"required,min=1s"`
+	GracefulShutdownTimeout time.Duration `koanf:"gracefulShutdownTimeout" validate:"required,min=1s"`
+	allowedOrigins          []string      `koanf:"allowedOrigins" validate:"required"`
 }
 
 type ServicesConfig struct {
 	Shortening ServiceConfig `koanf:"shortening"`
-}
-
-type Config struct {
-	App      AppConfig      `koanf:"app"`
-	Logging  LoggingConfig  `koanf:"logging"`
-	Tracing  TracingConfig  `koanf:"tracing"`
-	Services ServicesConfig `koanf:"services"`
 }
 
 func Load() (*Config, error) {
@@ -116,80 +106,84 @@ func Load() (*Config, error) {
 }
 
 func setDefaults(cfg *Config) {
-	if cfg.App.Name == "" {
-		cfg.App.Name = "Shortner"
+	if cfg.Env == "" {
+		cfg.Env = EnvLocal
 	}
 
-	if cfg.App.Environment == "" {
-		cfg.App.Environment = EnvLocal
+	if cfg.App.Name == "" {
+		cfg.App.Name = "Shortner"
 	}
 
 	if cfg.App.Version == "" {
 		cfg.App.Version = "0.1.0"
 	}
 
-	if cfg.Logging.Level == "" {
-		if cfg.App.Environment == EnvLocal {
-			cfg.Logging.Level = "debug"
+	if cfg.Observability.Logging.Level == "" {
+		if cfg.Env == EnvLocal {
+			cfg.Observability.Logging.Level = "debug"
 		} else {
-			cfg.Logging.Level = "info"
+			cfg.Observability.Logging.Level = "info"
 		}
 	}
 
-	if cfg.Logging.Format == "" {
-		if cfg.App.Environment == EnvLocal {
-			cfg.Logging.Format = "text"
+	if cfg.Observability.Logging.Format == "" {
+		if cfg.Env == EnvLocal {
+			cfg.Observability.Logging.Format = "text"
 		} else {
-			cfg.Logging.Format = "json"
+			cfg.Observability.Logging.Format = "json"
 		}
 	}
 
-	if cfg.Logging.AddSource == nil {
-		addSource := (cfg.App.Environment == EnvLocal || cfg.App.Environment == EnvStaging)
-		cfg.Logging.AddSource = &addSource
+	if cfg.Observability.Logging.AddSource == nil {
+		addSource := (cfg.Env == EnvLocal || cfg.Env == EnvStaging)
+		cfg.Observability.Logging.AddSource = &addSource
+	}
+
+	if cfg.Observability.HealthChecks.Interval == 0 {
+		cfg.Observability.HealthChecks.Interval = 30 * time.Second
+	}
+
+	if cfg.Observability.HealthChecks.Timeout == 0 {
+		cfg.Observability.HealthChecks.Timeout = 5 * time.Second
 	}
 
 	setServiceDefaults(&cfg.Services.Shortening)
 }
 
 func setServiceDefaults(cfg *ServiceConfig) {
-	if cfg.Name == nil {
-		name := "service"
-		cfg.Name = &name
+	if cfg.Name == "" {
+		cfg.Name = "service"
 	}
 
-	if cfg.Port == nil {
-		port := 3030
-		cfg.Port = &port
+	if cfg.Port == 0 {
+		cfg.Port = 3030
 	}
 
-	if cfg.MaxHeaderBytes == nil {
-		maxMaxHeaderBytes := 1024 * 1024 // 1MB
-		cfg.MaxHeaderBytes = &maxMaxHeaderBytes
+	if cfg.MaxHeaderBytes == 0 {
+		cfg.MaxHeaderBytes = 1024 * 1024 // 1MB
 	}
 
-	if cfg.ReadHeaderTimeout == nil {
-		readHeaderTimeout := time.Second
-		cfg.ReadHeaderTimeout = &readHeaderTimeout
+	if cfg.ReadHeaderTimeout == 0 {
+		cfg.ReadHeaderTimeout = time.Second
 	}
 
-	if cfg.ReadTimeout == nil {
-		readTimeout := time.Second
-		cfg.ReadTimeout = &readTimeout
+	if cfg.ReadTimeout == 0 {
+		cfg.ReadTimeout = time.Second
 	}
 
-	if cfg.WriteTimeout == nil {
-		writeTimeout := time.Second
-		cfg.WriteTimeout = &writeTimeout
+	if cfg.WriteTimeout == 0 {
+		cfg.WriteTimeout = time.Second
 	}
 
-	if cfg.IdelTimeout == nil {
-		idelTimeout := time.Minute
-		cfg.IdelTimeout = &idelTimeout
+	if cfg.IdelTimeout == 0 {
+		cfg.IdelTimeout = time.Minute
 	}
 
-	if cfg.GracefulShutdownTimeout == nil {
-		gracefulShutdownTimeout := 10 * time.Second
-		cfg.GracefulShutdownTimeout = &gracefulShutdownTimeout
+	if cfg.GracefulShutdownTimeout == 0 {
+		cfg.GracefulShutdownTimeout = 10 * time.Second
+	}
+
+	if cfg.allowedOrigins == nil {
+		cfg.allowedOrigins = []string{}
 	}
 }

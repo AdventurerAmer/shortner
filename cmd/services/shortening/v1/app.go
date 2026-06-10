@@ -7,6 +7,8 @@ import (
 	"github.com/AdventurerAmer/shortner/config"
 	"github.com/AdventurerAmer/shortner/logging"
 	"github.com/AdventurerAmer/shortner/web"
+
+	gocql "github.com/apache/cassandra-gocql-driver/v2"
 )
 
 func Run() int {
@@ -17,6 +19,19 @@ func Run() int {
 	}
 
 	logger := logging.New(cfg)
+
+	cluster := gocql.NewCluster(cfg.Infrastructure.Database.Host)
+	cluster.Keyspace = cfg.Infrastructure.Database.Keyspace
+	cluster.Port = cfg.Infrastructure.Database.Port
+	cluster.Consistency = gocql.Quorum
+	cluster.ConnectTimeout = cfg.Infrastructure.Database.ConnTimeout
+
+	session, err := cluster.CreateSession()
+	if err != nil {
+		logger.Error("failed to connect to database", "error", err)
+		return 1
+	}
+	defer session.Close()
 
 	app := web.New(logger, &cfg.Services.Shortening)
 
