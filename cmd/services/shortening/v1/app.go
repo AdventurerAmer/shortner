@@ -25,8 +25,11 @@ func Run() int {
 
 	app := web.New(logger, &cfg.Services.Shortening)
 
-	mux := web.NewMux()
+	mux := web.NewMux(logger)
 	mux.Use(app.RequestId)
+	mux.Use(app.Logging)
+	mux.Use(app.Recover)
+
 	mux.Get("/health", app.DefaultHealthHandler)
 
 	app.Run(mux)
