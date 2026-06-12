@@ -14,10 +14,10 @@ services:
       MAX_HEAP_SIZE: "512M"
     volumes:
       - cassandra_data:/var/lib/cassandra
-      - ./init/cassandra:/docker-entrypoint-initdb.d
-    restart: always
+      - ./internal/migrations/cassandra:/docker-entrypoint-initdb.d
+    restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "nodetool status"]
+      test: ["CMD-SHELL", "[ $$(nodetool statusgossip) = running ]"]
       interval: 15s
       timeout: 10s
       retries: 10
@@ -29,7 +29,7 @@ services:
       cassandra:
         condition: service_healthy
     volumes:
-      - ./init/cassandra:/init
+      - ./internal/migrations/cassandra:/init
     entrypoint: >
       bash -c "
         echo 'Running CQL init scripts...' &&

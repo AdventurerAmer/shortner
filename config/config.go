@@ -57,15 +57,17 @@ type ServicesConfig struct {
 }
 
 func Load() (*Config, error) {
-	if err := godotenv.Load(".env"); err != nil {
-		return nil, fmt.Errorf("failed to load env vars: %w", err)
-	}
-
 	delim := "."
 	k := koanf.New(delim)
 
+	// Load config.yaml first
 	if err := k.Load(file.Provider("config.yaml"), yaml.Parser()); err != nil {
 		return nil, fmt.Errorf("failed to load config.yaml: %w", err)
+	}
+
+	// Override config from .env
+	if err := godotenv.Load(".env"); err != nil {
+		return nil, fmt.Errorf("failed to load env vars: %w", err)
 	}
 
 	envPrefix := "SHORTNER_"

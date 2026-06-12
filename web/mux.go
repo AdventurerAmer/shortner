@@ -9,33 +9,47 @@ import (
 	"github.com/AdventurerAmer/shortner/errs"
 )
 
+type Handler = func(r *http.Request) (any, int, error)
+type Middleware = func(next http.HandlerFunc) http.HandlerFunc
+
 type Mux struct {
-	*http.ServeMux
+	serveMux    *http.ServeMux
+	middlewares []Middleware
 }
 
 func NewMux() *Mux {
 	return &Mux{
-		ServeMux: &http.ServeMux{},
+		serveMux: &http.ServeMux{},
 	}
 }
 
-func (m *Mux) Post(route string, handler Handler) {
-	m.HandleFunc(fmt.Sprintf("POST %s", route), composeHTTPHandlerFunc(handler))
+func (mux *Mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	serve := mux.serveMux.ServeHTTP
+	for _, m := range mux.middlewares {
+		serve = m(serve)
+	}
+	serve(w, r)
 }
 
-func (m *Mux) Get(route string, handler Handler) {
-	m.HandleFunc(fmt.Sprintf("GET %s", route), composeHTTPHandlerFunc(handler))
+func (mux *Mux) Post(route string, handler Handler) {
+	mux.serveMux.HandleFunc(fmt.Sprintf("POST %s", route), composeHTTPHandlerFunc(handler))
 }
 
-func (m *Mux) Put(route string, handler Handler) {
-	m.HandleFunc(fmt.Sprintf("PUT %s", route), composeHTTPHandlerFunc(handler))
+func (mux *Mux) Get(route string, handler Handler) {
+	mux.serveMux.HandleFunc(fmt.Sprintf("GET %s", route), composeHTTPHandlerFunc(handler))
 }
 
-func (m *Mux) Delete(route string, handler Handler) {
-	m.HandleFunc(fmt.Sprintf("DELETE %s", route), composeHTTPHandlerFunc(handler))
+func (mux *Mux) Put(route string, handler Handler) {
+	mux.serveMux.HandleFunc(fmt.Sprintf("PUT %s", route), composeHTTPHandlerFunc(handler))
 }
 
-type Handler = func(r *http.Request) (any, int, error)
+func (mux *Mux) Delete(route string, handler Handler) {
+	mux.serveMux.HandleFunc(fmt.Sprintf("DELETE %s", route), composeHTTPHandlerFunc(handler))
+}
+
+func (mux *Mux) Use(m Middleware) {
+	mux.middlewares = append(mux.middlewares, m)
+}
 
 func statusfromErrCode(code errs.Code) int {
 	switch code {
