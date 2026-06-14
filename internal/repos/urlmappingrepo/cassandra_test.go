@@ -25,8 +25,6 @@ type cassandraTestContext struct {
 var testContext cassandraTestContext
 
 func TestMain(m *testing.M) {
-	dir, _ := os.Getwd()
-	fmt.Printf("working dir: %+v\n", dir)
 	cfg, err := config.Load()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "load config failed: %+v\n", err)
