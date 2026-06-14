@@ -54,7 +54,8 @@ type ServiceConfig struct {
 }
 
 type ServicesConfig struct {
-	Shortening ServiceConfig `koanf:"shortening"`
+	Shortening  ServiceConfig `koanf:"shortening"`
+	Redirecting ServiceConfig `koanf:"redirecting"`
 }
 
 func Load() (*Config, error) {
@@ -151,6 +152,7 @@ func setDefaults(cfg *Config) {
 	}
 
 	setServiceDefaults(&cfg.Services.Shortening)
+	setServiceDefaults(&cfg.Services.Redirecting)
 }
 
 func setServiceDefaults(cfg *ServiceConfig) {

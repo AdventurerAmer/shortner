@@ -26,7 +26,7 @@ type ShortenURLResponse struct {
 	ShortURL  string    `json:"shortURL"`
 }
 
-type URLRedirectingService interface {
+type RedirectingService interface {
 	Redirect(ctx context.Context, req RedirectRequest) (RedirectResponse, error)
 }
 

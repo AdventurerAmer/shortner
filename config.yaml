@@ -7,6 +7,10 @@ services:
     name: shortening
     port: 3030
   
+  redirecting:
+    name: redirecting
+    port: 3031
+  
 infrastructure:
   database:
     host: localhost

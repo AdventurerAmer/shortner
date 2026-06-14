@@ -16,8 +16,9 @@ type Handlers struct {
 	shorteningSrv ports.ShorteningService
 }
 
-func NewHandlers(shorteningSrv ports.ShorteningService) *Handlers {
+func NewHandlers(cfg *config.ServiceConfig, shorteningSrv ports.ShorteningService) *Handlers {
 	return &Handlers{
+		cfg:           cfg,
 		shorteningSrv: shorteningSrv,
 	}
 }
@@ -31,7 +32,7 @@ func (h *Handlers) Shorten(c *web.Context) (any, error) {
 	ctx, cancel := context.WithTimeout(c.Ctx(), h.cfg.DefaultTimeout)
 	defer cancel()
 
-	userId := uuid.NewString()
+	userId := uuid.NewString() // @Temprary: using uuid for now...
 	resp, err := h.shorteningSrv.Shorten(ctx, userId, req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to shorten url: %w", err)

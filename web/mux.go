@@ -77,6 +77,7 @@ func (mux *Mux) composeHTTPHandlerFunc(handler Handler) http.HandlerFunc {
 			var appErr *errs.Error
 			if !errors.As(err, &appErr) {
 				appErr = errs.Wrap(err, errs.CodeInternal, "internal server error")
+				mux.logger.Error("internal server error", "error", err)
 			}
 			status := statusfromErrCode(appErr.Code)
 			w.WriteHeader(status)

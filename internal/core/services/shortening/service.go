@@ -28,7 +28,7 @@ func New(cfg Config) ports.ShorteningService {
 func (srv *service) Shorten(ctx context.Context, userId string, req ports.ShortenURLRequest) (ports.ShortenURLResponse, error) {
 	// TODO: check if userId is valid
 	// TODO: check if long url is valid
-	shortURL := srv.ShortURLPrefix + uuid.NewString() // USING uuid for now...
+	shortURL := uuid.NewString() // USING uuid for now...
 	mapping := &domain.URLMapping{
 		ShortURL:  shortURL,
 		LongURL:   req.LongURL,
@@ -40,7 +40,7 @@ func (srv *service) Shorten(ctx context.Context, userId string, req ports.Shorte
 	}
 	resp := ports.ShortenURLResponse{
 		CreatedAt: mapping.CreatedAt,
-		ShortURL:  mapping.ShortURL,
+		ShortURL:  srv.ShortURLPrefix + shortURL,
 	}
 	return resp, nil
 }

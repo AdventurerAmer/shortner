@@ -7,7 +7,7 @@ import (
 
 	"github.com/AdventurerAmer/shortner/config"
 	"github.com/AdventurerAmer/shortner/infra"
-	"github.com/AdventurerAmer/shortner/internal/core/services/shortening"
+	"github.com/AdventurerAmer/shortner/internal/core/services/redirecting"
 	"github.com/AdventurerAmer/shortner/internal/repos/urlmappingrepo"
 	"github.com/AdventurerAmer/shortner/logging"
 	"github.com/AdventurerAmer/shortner/web"
@@ -25,17 +25,16 @@ func Run() int {
 	cassandra, err := infra.ConnectToCassandra(context.TODO(), &cfg.Infrastructure.Database)
 	defer infra.CloseCassandra(context.TODO(), cassandra)
 
-	app := web.New(logger, &cfg.Services.Shortening)
+	app := web.New(logger, &cfg.Services.Redirecting)
 
-	urlmappingRepo := urlmappingrepo.NewCassandra(cassandra.Session, cfg.Infrastructure.Database.Keyspace)
+	URLMappingRepo := urlmappingrepo.NewCassandra(cassandra.Session, cfg.Infrastructure.Database.Keyspace)
 
-	shorteningCfg := shortening.Config{
-		ShortURLPrefix: "http://localhost:3031/v1/redirect/",
-		URLMappingRepo: urlmappingRepo,
+	redirectingCfg := redirecting.Config{
+		URLMappingRepo: URLMappingRepo,
 	}
-	shorteningSrv := shortening.New(shorteningCfg)
+	redirectingSrv := redirecting.New(redirectingCfg)
 
-	handlers := NewHandlers(&cfg.Services.Shortening, shorteningSrv)
+	handlers := NewHandlers(logger, &cfg.Services.Redirecting, redirectingSrv)
 
 	mux := web.NewMux(logger)
 
@@ -44,7 +43,7 @@ func Run() int {
 	mux.Use(app.Recover)
 
 	mux.Get("/health", app.DefaultHealthHandler)
-	mux.Post("/v1/shorten", handlers.Shorten)
+	mux.Get("/v1/redirect/{short_url}", handlers.Redirect)
 
 	app.Run(mux)
 

@@ -34,11 +34,14 @@ func (app *App) Recover(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if err := recover(); err != nil {
+				// TODO: pretty print stack here...
 				app.Logger.Error("recovering from panic", "error", err)
 
 				resp := errs.New(errs.CodeInternal, "internal server error")
 				status := statusfromErrCode(resp.Code)
+
 				w.WriteHeader(status)
+
 				if err := writeJSON(resp, w); err != nil {
 					app.Logger.Error("failed to write resposne to client", "error", err)
 				}
