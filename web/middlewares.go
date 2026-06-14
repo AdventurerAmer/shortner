@@ -38,7 +38,8 @@ func (app *App) Recover(next http.HandlerFunc) http.HandlerFunc {
 
 				resp := errs.New(errs.CodeInternal, "internal server error")
 				status := statusfromErrCode(resp.Code)
-				if err := writeJSON(resp, status, w); err != nil {
+				w.WriteHeader(status)
+				if err := writeJSON(resp, w); err != nil {
 					app.Logger.Error("failed to write resposne to client", "error", err)
 				}
 			}
@@ -69,7 +70,9 @@ func (app *App) Logging(next http.HandlerFunc) http.HandlerFunc {
 		next(wrappedWriter, r)
 
 		latency := time.Since(start)
-		app.Logger.Info("HTTP Request Processed",
+		app.Logger.Info(
+			"HTTP Request Processed",
+			"request-id", GetRequestId(r.Context()),
 			"method", r.Method,
 			"path", r.URL.Path,
 			"status", wrappedWriter.statusCode,

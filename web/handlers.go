@@ -1,8 +1,6 @@
 package web
 
-import "net/http"
-
-func (app *App) DefaultHealthHandler(r *http.Request) (any, int, error) {
+func (app *App) DefaultHealthHandler(c *Context) (any, error) {
 	resp := struct {
 		Name   string `json:"name"`
 		Status string `json:"status"`
@@ -10,5 +8,5 @@ func (app *App) DefaultHealthHandler(r *http.Request) (any, int, error) {
 		Name:   app.Cfg.Name,
 		Status: "healthy",
 	}
-	return resp, http.StatusOK, nil
+	return resp, nil
 }

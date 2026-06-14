@@ -12,7 +12,7 @@ import (
 	"github.com/AdventurerAmer/shortner/logging"
 )
 
-type Handler = func(r *http.Request) (any, int, error)
+type Handler = func(c *Context) (any, error)
 type Middleware = func(next http.HandlerFunc) http.HandlerFunc
 
 type Mux struct {
@@ -68,35 +68,33 @@ func statusfromErrCode(code errs.Code) int {
 
 func (mux *Mux) composeHTTPHandlerFunc(handler Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var (
-			resp   any
-			status int
-			err    error
-		)
-		resp, status, err = handler(r)
+		c := &Context{
+			Request:        r,
+			ResponseWriter: w,
+		}
+		resp, err := handler(c)
 		if err != nil {
 			var appErr *errs.Error
 			if !errors.As(err, &appErr) {
 				appErr = errs.Wrap(err, errs.CodeInternal, "internal server error")
 			}
-			status = statusfromErrCode(appErr.Code)
+			status := statusfromErrCode(appErr.Code)
+			w.WriteHeader(status)
 			resp = appErr
 		}
-
-		if err := writeJSON(resp, status, w); err != nil {
+		if err := writeJSON(resp, w); err != nil {
 			mux.logger.Error("failed to write resposne to client", "error", err)
 		}
 	}
 }
 
-func writeJSON(resp any, status int, w http.ResponseWriter) error {
+func writeJSON(resp any, w http.ResponseWriter) error {
 	payload, err := json.Marshal(resp)
 	if err != nil {
 		return fmt.Errorf("marshaling payload to json failed: %w", err)
 	}
 
 	w.Header().Add("Content-Type", "application/json")
-	w.WriteHeader(status)
 
 	b := &bytes.Buffer{}
 	if _, err := b.Write(payload); err != nil {

@@ -2,6 +2,7 @@ package ports
 
 import (
 	"context"
+	"time"
 
 	"github.com/AdventurerAmer/shortner/internal/core/domain"
 )
@@ -13,7 +14,7 @@ type URLMappingRepository interface {
 }
 
 type ShorteningService interface {
-	Shorten(ctx context.Context, req ShortenURLRequest) (ShortenURLResponse, error)
+	Shorten(ctx context.Context, userId string, req ShortenURLRequest) (ShortenURLResponse, error)
 }
 
 type ShortenURLRequest struct {
@@ -21,7 +22,8 @@ type ShortenURLRequest struct {
 }
 
 type ShortenURLResponse struct {
-	ShortURL string `json:"shortURL"`
+	CreatedAt time.Time `json:"createdAt"`
+	ShortURL  string    `json:"shortURL"`
 }
 
 type URLRedirectingService interface {
