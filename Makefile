@@ -20,4 +20,12 @@ downv:
 
 PHONY: test_url_mapping_repo
 test_url_mapping_repo:
-	@go test -race -count=1 ./internal/repos/urlmappingrepo
+	@CGO_ENABLED=1 go test -race -count=1 ./internal/repos/urlmappingrepo
+
+PHONY: test_redirecting
+test_redirecting:
+	@CGO_ENABLED=1 go test -race -count=1 ./internal/repos/urlmappingrepo ./internal/services/redirecting
+
+PHONY: test_shortening
+test_shortening:
+	@CGO_ENABLED=1 go test -race -count=1 ./internal/repos/urlmappingrepo ./internal/services/shortening

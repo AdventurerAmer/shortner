@@ -2,50 +2,29 @@ package redirecting
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"testing"
 	"time"
 
-	"github.com/AdventurerAmer/shortner/config"
-	"github.com/AdventurerAmer/shortner/infra"
 	"github.com/AdventurerAmer/shortner/internal/core/domain"
 	"github.com/AdventurerAmer/shortner/internal/core/ports"
 	"github.com/AdventurerAmer/shortner/internal/repos/urlmappingrepo"
-	"github.com/AdventurerAmer/shortner/logging"
+	"github.com/AdventurerAmer/shortner/test"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/uuid"
 )
 
-type cassandraTestContext struct {
-	cassandra *infra.Cassandra
-	keyspace  string
-	logger    *logging.Logger
-}
-
-var testCtx cassandraTestContext
+var testCtx *test.Cassandra
 
 func TestMain(m *testing.M) {
-	cfg, err := config.Load()
+	var err error
+	testCtx, err = test.NewCassandraTestContext()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "load config failed: %+v\n", err)
-		os.Exit(1)
+		panic(err)
 	}
-
-	testCtx.logger = logging.New(cfg)
-
-	testCtx.cassandra, err = infra.ConnectToCassandra(context.TODO(), &cfg.Infrastructure.Database)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "connect to cassandra failed: %+v", err)
-		os.Exit(1)
-	}
-	testCtx.keyspace = cfg.Infrastructure.Database.Keyspace
-
 	exitCode := m.Run()
-
-	infra.CloseCassandra(context.TODO(), testCtx.cassandra)
-
+	testCtx.Shutdown()
 	os.Exit(exitCode)
 }
 
@@ -91,7 +70,7 @@ func TestRedirectingService_RedirectSuccessForValidInput(t *testing.T) {
 
 func createRepo(t *testing.T) ports.URLMappingRepository {
 	t.Helper()
-	URLMappingRepo := urlmappingrepo.NewCassandra(testCtx.cassandra.Session, testCtx.keyspace)
+	URLMappingRepo := urlmappingrepo.NewCassandra(testCtx.Cassandra.Session, testCtx.Keyspace)
 	return URLMappingRepo
 }
 

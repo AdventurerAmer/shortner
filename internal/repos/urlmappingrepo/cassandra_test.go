@@ -2,48 +2,27 @@ package urlmappingrepo
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"testing"
 	"time"
 
-	"github.com/AdventurerAmer/shortner/config"
-	"github.com/AdventurerAmer/shortner/infra"
 	"github.com/AdventurerAmer/shortner/internal/core/domain"
-	"github.com/AdventurerAmer/shortner/logging"
+	"github.com/AdventurerAmer/shortner/test"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/uuid"
 )
 
-type cassandraTestContext struct {
-	cassandra *infra.Cassandra
-	keyspace  string
-	logger    *logging.Logger
-}
-
-var testContext cassandraTestContext
+var testCtx *test.Cassandra
 
 func TestMain(m *testing.M) {
-	cfg, err := config.Load()
+	var err error
+	testCtx, err = test.NewCassandraTestContext()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "load config failed: %+v\n", err)
-		os.Exit(1)
+		panic(err)
 	}
-
-	testContext.logger = logging.New(cfg)
-
-	testContext.cassandra, err = infra.ConnectToCassandra(context.TODO(), &cfg.Infrastructure.Database)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "connect to cassandra failed: %+v", err)
-		os.Exit(1)
-	}
-	testContext.keyspace = cfg.Infrastructure.Database.Keyspace
-
 	exitCode := m.Run()
-
-	infra.CloseCassandra(context.TODO(), testContext.cassandra)
-
+	testCtx.Shutdown()
 	os.Exit(exitCode)
 }
 
@@ -127,7 +106,7 @@ func TestCassandraURLMappingRepo_DeletesuccessForValidInput(t *testing.T) {
 func createRepo(t *testing.T) *cassandraRepo {
 	t.Helper()
 	return &cassandraRepo{
-		session:  testContext.cassandra.Session,
-		keyspace: testContext.keyspace,
+		session:  testCtx.Cassandra.Session,
+		keyspace: testCtx.Keyspace,
 	}
 }
