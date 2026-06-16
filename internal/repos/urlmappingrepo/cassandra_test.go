@@ -76,7 +76,7 @@ func TestCassandraURLMappingRepo_GetsuccessForValidInput(t *testing.T) {
 		repo.Delete(dctx, expected.ShortURL)
 	})
 
-	if cmp.Equal(expected, got, cmpopts.EquateApproxTime(time.Second)) {
+	if !cmp.Equal(expected, got, cmpopts.EquateApproxTime(time.Second)) {
 		t.Errorf("expected %+v, got %+v, diff %+v", expected, got, cmp.Diff(expected, got))
 	}
 }

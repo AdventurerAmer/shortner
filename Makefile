@@ -29,3 +29,7 @@ test_redirecting:
 PHONY: test_shortening
 test_shortening:
 	@CGO_ENABLED=1 go test -race -count=1 ./internal/repos/urlmappingrepo ./internal/services/shortening
+
+PHONY: tests
+tests:
+	@CGO_ENABLED=1 go test -race -count=1 ./internal/repos/urlmappingrepo ./internal/core/services/redirecting ./internal/core/services/shortening

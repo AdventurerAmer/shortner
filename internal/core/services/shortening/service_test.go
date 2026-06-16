@@ -53,7 +53,7 @@ func TestShorteningService_ShortenSuccessForValidInput(t *testing.T) {
 		expected := resp.ShortURL
 		got := m.ShortURL
 
-		if cmp.Equal(expected, got, cmpopts.EquateApproxTime(time.Second)) {
+		if !cmp.Equal(expected, got, cmpopts.EquateApproxTime(time.Second)) {
 			t.Errorf("expected %+v, got %+v, diff %+v", expected, got, cmp.Diff(expected, got))
 		}
 	}
@@ -62,7 +62,7 @@ func TestShorteningService_ShortenSuccessForValidInput(t *testing.T) {
 		expected := req.LongURL
 		got := m.LongURL
 
-		if cmp.Equal(expected, got, cmpopts.EquateApproxTime(time.Second)) {
+		if !cmp.Equal(expected, got, cmpopts.EquateApproxTime(time.Second)) {
 			t.Errorf("expected %+v, got %+v, diff %+v", expected, got, cmp.Diff(expected, got))
 		}
 	}
