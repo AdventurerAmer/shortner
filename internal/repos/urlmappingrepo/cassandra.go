@@ -21,10 +21,10 @@ func NewCassandra(session *gocql.Session, keyspace string) ports.URLMappingRepos
 func (repo *cassandraRepo) Create(ctx context.Context, m *domain.URLMapping) error {
 	stmt := fmt.Sprintf(
 		`INSERT INTO 
-		 %s.url_mappings (short_url, long_url, created_at, user_id)
+		 %s.url_mappings (alias, long_url, created_at, user_id)
 		 VALUES (?, ?, ?, ?)`, repo.keyspace)
 
-	q := repo.session.Query(stmt, m.ShortURL, m.LongURL, m.CreatedAt, m.UserId)
+	q := repo.session.Query(stmt, m.Alias, m.LongURL, m.CreatedAt, m.UserId)
 	if err := q.ExecContext(ctx); err != nil {
 		return fmt.Errorf("'ExecContext' failed: %w", err)
 	}
@@ -32,25 +32,25 @@ func (repo *cassandraRepo) Create(ctx context.Context, m *domain.URLMapping) err
 	return nil
 }
 
-func (repo *cassandraRepo) Get(ctx context.Context, shortURL string) (*domain.URLMapping, error) {
+func (repo *cassandraRepo) Get(ctx context.Context, alias string) (*domain.URLMapping, error) {
 	stmt := fmt.Sprintf(
 		`SELECT long_url, created_at, user_id 
 		 FROM %s.url_mappings
-		 WHERE short_url = ?`, repo.keyspace)
-	mapping := domain.URLMapping{ShortURL: shortURL}
-	query := repo.session.Query(stmt, shortURL).Consistency(gocql.One)
+		 WHERE alias = ?`, repo.keyspace)
+	mapping := domain.URLMapping{Alias: alias}
+	query := repo.session.Query(stmt, alias).Consistency(gocql.One)
 	if err := query.ScanContext(ctx, &mapping.LongURL, &mapping.CreatedAt, &mapping.UserId); err != nil {
 		return nil, fmt.Errorf("'ScanContext' failed: %w", err)
 	}
 	return &mapping, nil
 }
 
-func (repo *cassandraRepo) Delete(ctx context.Context, shortURL string) error {
+func (repo *cassandraRepo) Delete(ctx context.Context, alias string) error {
 	stmt := fmt.Sprintf(
 		`DELETE FROM 
 		%s.url_mappings 
-		WHERE short_url = ?`, repo.keyspace)
-	query := repo.session.Query(stmt, shortURL)
+		WHERE alias = ?`, repo.keyspace)
+	query := repo.session.Query(stmt, alias)
 	if err := query.ExecContext(ctx); err != nil {
 		return fmt.Errorf("'ExecContext' failed: %w", err)
 	}

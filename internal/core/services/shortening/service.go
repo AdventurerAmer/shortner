@@ -7,12 +7,13 @@ import (
 
 	"github.com/AdventurerAmer/shortner/internal/core/domain"
 	"github.com/AdventurerAmer/shortner/internal/core/ports"
-	"github.com/google/uuid"
 )
 
 type Config struct {
 	ShortURLPrefix string
+	Shard          string
 	URLMappingRepo ports.URLMappingRepository
+	Snowflake      *domain.Snowflake
 }
 
 type service struct {
@@ -28,9 +29,9 @@ func New(cfg Config) ports.ShorteningService {
 func (srv *service) Shorten(ctx context.Context, userId string, req ports.ShortenURLRequest) (ports.ShortenURLResponse, error) {
 	// TODO: check if userId is valid
 	// TODO: check if long url is valid
-	shortURL := uuid.NewString() // USING uuid for now...
+	alias := srv.Snowflake.NextBase62(srv.Shard)
 	mapping := &domain.URLMapping{
-		ShortURL:  shortURL,
+		Alias:     alias,
 		LongURL:   req.LongURL,
 		CreatedAt: time.Now().UTC(),
 		UserId:    userId,
@@ -38,9 +39,10 @@ func (srv *service) Shorten(ctx context.Context, userId string, req ports.Shorte
 	if err := srv.URLMappingRepo.Create(ctx, mapping); err != nil {
 		return ports.ShortenURLResponse{}, fmt.Errorf("'URLMappingRep.Create' failed: %w", err)
 	}
+	shortURL := srv.ShortURLPrefix + alias
 	resp := ports.ShortenURLResponse{
 		CreatedAt: mapping.CreatedAt,
-		ShortURL:  srv.ShortURLPrefix + shortURL,
+		ShortURL:  shortURL,
 	}
 	return resp, nil
 }

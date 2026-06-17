@@ -32,7 +32,7 @@ func Run() int {
 	redirectingCfg := redirecting.Config{
 		URLMappingRepo: URLMappingRepo,
 	}
-	redirectingSrv := redirecting.New(redirectingCfg)
+	redirectingSrv := redirecting.New(logger, redirectingCfg)
 
 	handlers := NewHandlers(logger, &cfg.Services.Redirecting, redirectingSrv)
 
@@ -43,7 +43,7 @@ func Run() int {
 	mux.Use(app.Recover)
 
 	mux.Get("/health", app.DefaultHealthHandler)
-	mux.Get("/v1/redirect/{short_url}", handlers.Redirect)
+	mux.Get("/v1/redirect/{alias}", handlers.Redirect)
 
 	app.Run(mux)
 

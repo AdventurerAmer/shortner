@@ -31,7 +31,7 @@ type RedirectingService interface {
 }
 
 type RedirectRequest struct {
-	ShortURL string `json:"shortURL"`
+	Alias string `json:"alias"`
 }
 
 type RedirectResponse struct {

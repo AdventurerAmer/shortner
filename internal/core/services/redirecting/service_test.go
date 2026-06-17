@@ -35,8 +35,11 @@ func TestRedirectingService_RedirectSuccessForValidInput(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
+	shard := "sa"
+	snowflake := domain.NewSnowflake()
+
 	m := &domain.URLMapping{
-		ShortURL:  uuid.NewString(),
+		Alias:     snowflake.NextBase62(shard),
 		LongURL:   "www.example.com/examples",
 		CreatedAt: time.Now().UTC(),
 		UserId:    uuid.NewString(),
@@ -47,7 +50,7 @@ func TestRedirectingService_RedirectSuccessForValidInput(t *testing.T) {
 	}
 
 	req := ports.RedirectRequest{
-		ShortURL: m.ShortURL,
+		Alias: m.Alias,
 	}
 	resp, err := service.Redirect(ctx, req)
 	if err != nil {
@@ -64,7 +67,7 @@ func TestRedirectingService_RedirectSuccessForValidInput(t *testing.T) {
 	t.Cleanup(func() {
 		dctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
-		repo.Delete(dctx, m.ShortURL)
+		repo.Delete(dctx, m.Alias)
 	})
 }
 
@@ -82,5 +85,6 @@ func createService(t *testing.T) ports.RedirectingService {
 	}
 	return &service{
 		Config: cfg,
+		logger: testCtx.Logger,
 	}
 }

@@ -7,6 +7,7 @@ import (
 
 	"github.com/AdventurerAmer/shortner/config"
 	"github.com/AdventurerAmer/shortner/infra"
+	"github.com/AdventurerAmer/shortner/internal/core/domain"
 	"github.com/AdventurerAmer/shortner/internal/core/services/shortening"
 	"github.com/AdventurerAmer/shortner/internal/repos/urlmappingrepo"
 	"github.com/AdventurerAmer/shortner/logging"
@@ -29,9 +30,13 @@ func Run() int {
 
 	urlmappingRepo := urlmappingrepo.NewCassandra(cassandra.Session, cfg.Infrastructure.Database.Keyspace)
 
+	snowflake := domain.NewSnowflake()
+
 	shorteningCfg := shortening.Config{
 		ShortURLPrefix: "http://localhost:3031/v1/redirect/",
+		Shard:          "sa", // TODO: hardcoding shard
 		URLMappingRepo: urlmappingRepo,
+		Snowflake:      snowflake,
 	}
 	shorteningSrv := shortening.New(shorteningCfg)
 

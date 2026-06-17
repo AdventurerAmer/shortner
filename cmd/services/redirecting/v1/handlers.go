@@ -25,11 +25,10 @@ func NewHandlers(logger *logging.Logger, cfg *config.ServiceConfig, redirectingS
 }
 
 func (h *Handlers) Redirect(c *web.Context) (any, error) {
-	shortURL := c.Request.PathValue("short_url")
-	h.logger.Debug("Redirect Request", "shortURL", shortURL)
 	req := ports.RedirectRequest{
-		ShortURL: shortURL,
+		Alias: c.Request.PathValue("alias"),
 	}
+
 	ctx, cancel := context.WithTimeout(c.Ctx(), h.cfg.DefaultTimeout)
 	defer cancel()
 

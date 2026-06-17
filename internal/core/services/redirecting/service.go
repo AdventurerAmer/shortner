@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/AdventurerAmer/shortner/internal/core/ports"
+	"github.com/AdventurerAmer/shortner/logging"
 )
 
 type Config struct {
@@ -13,16 +14,17 @@ type Config struct {
 
 type service struct {
 	Config
+	logger *logging.Logger
 }
 
-func New(cfg Config) ports.RedirectingService {
+func New(logger *logging.Logger, cfg Config) ports.RedirectingService {
 	return &service{
 		Config: cfg,
 	}
 }
 
 func (srv *service) Redirect(ctx context.Context, req ports.RedirectRequest) (ports.RedirectResponse, error) {
-	mapping, err := srv.URLMappingRepo.Get(ctx, req.ShortURL)
+	mapping, err := srv.URLMappingRepo.Get(ctx, req.Alias)
 	if err != nil {
 		return ports.RedirectResponse{}, fmt.Errorf("'URLMappingRepo.Get' failed: %w", err)
 	}

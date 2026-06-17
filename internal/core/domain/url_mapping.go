@@ -3,7 +3,7 @@ package domain
 import "time"
 
 type URLMapping struct {
-	ShortURL  string    `json:"shortURL"`
+	Alias     string    `json:"alias"`
 	LongURL   string    `json:"longURL"`
 	CreatedAt time.Time `json:"createdAt"`
 	UserId    string    `json:"userId"`

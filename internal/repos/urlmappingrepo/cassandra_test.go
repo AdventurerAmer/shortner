@@ -33,7 +33,7 @@ func TestCassandraURLMappingRepo_CreateSuccessForValidInput(t *testing.T) {
 	defer cancel()
 
 	m := &domain.URLMapping{
-		ShortURL:  uuid.NewString(),
+		Alias:     uuid.NewString(),
 		LongURL:   "www.example.com/examples",
 		CreatedAt: time.Now().UTC(),
 		UserId:    uuid.NewString(),
@@ -45,7 +45,7 @@ func TestCassandraURLMappingRepo_CreateSuccessForValidInput(t *testing.T) {
 	t.Cleanup(func() {
 		dctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
-		repo.Delete(dctx, m.ShortURL)
+		repo.Delete(dctx, m.Alias)
 	})
 }
 
@@ -56,7 +56,7 @@ func TestCassandraURLMappingRepo_GetsuccessForValidInput(t *testing.T) {
 	defer cancel()
 
 	expected := &domain.URLMapping{
-		ShortURL:  uuid.NewString(),
+		Alias:     uuid.NewString(),
 		LongURL:   "www.example.com/examples",
 		CreatedAt: time.Now().UTC(),
 		UserId:    uuid.NewString(),
@@ -65,7 +65,7 @@ func TestCassandraURLMappingRepo_GetsuccessForValidInput(t *testing.T) {
 		t.Skip()
 	}
 
-	got, err := repo.Get(ctx, expected.ShortURL)
+	got, err := repo.Get(ctx, expected.Alias)
 	if err != nil {
 		t.Fatalf("expected no error, got %+v", err)
 	}
@@ -73,7 +73,7 @@ func TestCassandraURLMappingRepo_GetsuccessForValidInput(t *testing.T) {
 	t.Cleanup(func() {
 		dctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
-		repo.Delete(dctx, expected.ShortURL)
+		repo.Delete(dctx, expected.Alias)
 	})
 
 	if !cmp.Equal(expected, got, cmpopts.EquateApproxTime(time.Second)) {
@@ -88,7 +88,7 @@ func TestCassandraURLMappingRepo_DeletesuccessForValidInput(t *testing.T) {
 	defer cancel()
 
 	expected := &domain.URLMapping{
-		ShortURL:  uuid.NewString(),
+		Alias:     uuid.NewString(),
 		LongURL:   "www.example.com/examples",
 		CreatedAt: time.Now().UTC(),
 		UserId:    uuid.NewString(),
@@ -97,7 +97,7 @@ func TestCassandraURLMappingRepo_DeletesuccessForValidInput(t *testing.T) {
 		t.Skip()
 	}
 
-	err := repo.Delete(ctx, expected.ShortURL)
+	err := repo.Delete(ctx, expected.Alias)
 	if err != nil {
 		t.Fatalf("expected no error, got %+v", err)
 	}

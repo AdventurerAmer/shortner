@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/AdventurerAmer/shortner/internal/core/domain"
 	"github.com/AdventurerAmer/shortner/internal/core/ports"
 	"github.com/AdventurerAmer/shortner/internal/repos/urlmappingrepo"
 	"github.com/AdventurerAmer/shortner/test"
@@ -51,7 +52,7 @@ func TestShorteningService_ShortenSuccessForValidInput(t *testing.T) {
 
 	{
 		expected := resp.ShortURL
-		got := m.ShortURL
+		got := m.Alias
 
 		if !cmp.Equal(expected, got, cmpopts.EquateApproxTime(time.Second)) {
 			t.Errorf("expected %+v, got %+v, diff %+v", expected, got, cmp.Diff(expected, got))
@@ -70,7 +71,7 @@ func TestShorteningService_ShortenSuccessForValidInput(t *testing.T) {
 	t.Cleanup(func() {
 		dctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
-		repo.Delete(dctx, m.ShortURL)
+		repo.Delete(dctx, m.Alias)
 	})
 }
 
@@ -86,6 +87,8 @@ func createService(t *testing.T) ports.ShorteningService {
 	cfg := Config{
 		URLMappingRepo: repo,
 		ShortURLPrefix: "",
+		Shard:          "sa",
+		Snowflake:      domain.NewSnowflake(),
 	}
 	return &service{
 		Config: cfg,
