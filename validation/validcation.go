@@ -18,10 +18,8 @@ func Validate(s any) error {
 		return name
 	})
 	if err := v.Struct(s); err != nil {
-		appErr := errs.New(errs.CodeValidation, "one or more invalid fields")
 		fields := formatValidationErrors(err)
-		appErr.Fields = &fields
-		return appErr
+		return errs.NewValidation(fields)
 	}
 	return nil
 }

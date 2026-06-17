@@ -2,6 +2,7 @@ package web
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -33,12 +34,13 @@ func GetRequestId(ctx context.Context) string {
 func (app *App) Recover(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
-			if err := recover(); err != nil {
+			if r := recover(); r != nil {
 				// TODO: pretty print stack here...
+				err := fmt.Errorf("%+v", r)
 				app.Logger.Error("recovering from panic", "error", err)
 
-				resp := errs.New(errs.CodeInternal, "internal server error")
-				status := statusfromErrCode(resp.Code)
+				resp := errs.NewInternal(err)
+				status := errs.HTTPStatus(resp.Code)
 
 				w.WriteHeader(status)
 
@@ -72,7 +74,7 @@ func (app *App) Logging(next http.HandlerFunc) http.HandlerFunc {
 
 		next(wrappedWriter, r)
 
-		latency := time.Since(start)
+		latency := fmt.Sprintf("%d ms", time.Since(start).Milliseconds())
 		app.Logger.Info(
 			"HTTP Request Processed",
 			"request-id", GetRequestId(r.Context()),

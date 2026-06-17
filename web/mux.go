@@ -56,18 +56,6 @@ func (mux *Mux) Use(m Middleware) {
 	mux.middlewares = append(mux.middlewares, m)
 }
 
-func statusfromErrCode(code errs.Code) int {
-	switch code {
-	case errs.CodeInternal:
-		return http.StatusInternalServerError
-	case errs.CodeValidation:
-		return http.StatusBadRequest
-	case errs.CodeResourceNotFound:
-		return http.StatusNotFound
-	}
-	return 0
-}
-
 func (mux *Mux) composeHTTPHandlerFunc(handler Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		c := &Context{
@@ -81,7 +69,7 @@ func (mux *Mux) composeHTTPHandlerFunc(handler Handler) http.HandlerFunc {
 				appErr = errs.Wrap(err, errs.CodeInternal, "internal server error")
 				mux.logger.Error("internal server error", "error", err)
 			}
-			status := statusfromErrCode(appErr.Code)
+			status := errs.HTTPStatus(appErr.Code)
 			w.WriteHeader(status)
 			resp = appErr
 		}

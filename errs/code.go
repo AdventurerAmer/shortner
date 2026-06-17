@@ -5,10 +5,10 @@ import "encoding/json"
 type Code int
 
 const (
-	CodeUnknown Code = iota
-	CodeInternal
-	CodeValidation
-	CodeResourceNotFound
+	CodeUnknown          Code = 0
+	CodeInternal         Code = 1
+	CodeValidation       Code = 2
+	CodeResourceNotFound Code = 3
 )
 
 var codeToStr = map[Code]string{

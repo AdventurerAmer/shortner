@@ -5,10 +5,10 @@ import (
 )
 
 type Error struct {
-	Code    Code               `json:"code"`
-	Message string             `json:"message"`
-	Fields  *map[string]string `json:"fields,omitempty"`
-	Err     error              `json:"-"`
+	Code    Code              `json:"code"`
+	Message string            `json:"message"`
+	Fields  map[string]string `json:"fields,omitempty"`
+	Err     error             `json:"-"`
 }
 
 func New(code Code, message string) *Error {
@@ -40,4 +40,18 @@ func (e *Error) Is(target error) bool {
 
 func (e *Error) Unwrap() error {
 	return e.Err
+}
+
+func NewInternal(err error) *Error {
+	return &Error{
+		Code:    CodeInternal,
+		Message: "internal server error",
+		Err:     err,
+	}
+}
+
+func NewValidation(fields map[string]string) *Error {
+	err := New(CodeValidation, "one or more invalid fields")
+	err.Fields = fields
+	return err
 }
