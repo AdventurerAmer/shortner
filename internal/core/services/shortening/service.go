@@ -7,6 +7,7 @@ import (
 
 	"github.com/AdventurerAmer/shortner/internal/core/domain"
 	"github.com/AdventurerAmer/shortner/internal/core/ports"
+	"github.com/AdventurerAmer/shortner/validation"
 )
 
 type Config struct {
@@ -28,7 +29,9 @@ func New(cfg Config) ports.ShorteningService {
 
 func (srv *service) Shorten(ctx context.Context, userId string, req ports.ShortenURLRequest) (ports.ShortenURLResponse, error) {
 	// TODO: check if userId is valid
-	// TODO: check if long url is valid
+	if err := validation.Validate(&req); err != nil {
+		return ports.ShortenURLResponse{}, fmt.Errorf("validation failed: %w", err)
+	}
 	alias := srv.Snowflake.NextBase62(srv.Shard)
 	mapping := &domain.URLMapping{
 		Alias:     alias,

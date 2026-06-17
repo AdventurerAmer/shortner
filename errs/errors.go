@@ -4,27 +4,11 @@ import (
 	"fmt"
 )
 
-type Code int
-
-const (
-	CodeInternal Code = iota
-	CodeResourceNotFound
-)
-
-func (c Code) String() string {
-	switch c {
-	case CodeInternal:
-		return "INTERNAL"
-	case CodeResourceNotFound:
-		return "RESOURCE_NOT_FOUND"
-	}
-	return ""
-}
-
 type Error struct {
-	Code    Code   `json:"code"`
-	Message string `json:"message"`
-	Err     error  `json:"-"`
+	Code    Code               `json:"code"`
+	Message string             `json:"message"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Err     error              `json:"-"`
 }
 
 func New(code Code, message string) *Error {

@@ -18,7 +18,7 @@ type ShorteningService interface {
 }
 
 type ShortenURLRequest struct {
-	LongURL string `json:"longURL"`
+	LongURL string `json:"longURL" validate:"required,url"`
 }
 
 type ShortenURLResponse struct {
@@ -31,7 +31,7 @@ type RedirectingService interface {
 }
 
 type RedirectRequest struct {
-	Alias string `json:"alias"`
+	Alias string `json:"alias" validate:"required,len=9"`
 }
 
 type RedirectResponse struct {

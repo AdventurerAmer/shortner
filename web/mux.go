@@ -60,6 +60,8 @@ func statusfromErrCode(code errs.Code) int {
 	switch code {
 	case errs.CodeInternal:
 		return http.StatusInternalServerError
+	case errs.CodeValidation:
+		return http.StatusBadRequest
 	case errs.CodeResourceNotFound:
 		return http.StatusNotFound
 	}

@@ -49,15 +49,15 @@ func (g *Snowflake) Next() int64 {
 	return id
 }
 
-func (g *Snowflake) NextBase62(shard string) string {
-	return shard + toBase62(g.Next())
+func (g *Snowflake) NextBase62(prefix string) string {
+	return prefix + toBase62(g.Next())
 }
 
 const base62Alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 
 func toBase62(num int64) string {
 	if num == 0 {
-		return string(base62Alphabet[0])
+		return "0"
 	}
 
 	var encoded strings.Builder
