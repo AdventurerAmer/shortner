@@ -40,7 +40,7 @@ func (srv *service) Shorten(ctx context.Context, userId string, req ports.Shorte
 		UserId:    userId,
 	}
 	if err := srv.URLMappingRepo.Create(ctx, mapping); err != nil {
-		return ports.ShortenURLResponse{}, fmt.Errorf("'URLMappingRep.Create' failed: %w", err)
+		return ports.ShortenURLResponse{}, fmt.Errorf("'URLMappingRepo.Create' failed: %w", err)
 	}
 	shortURL := srv.ShortURLPrefix + alias
 	resp := ports.ShortenURLResponse{

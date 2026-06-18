@@ -5,17 +5,21 @@ import "encoding/json"
 type Code int
 
 const (
-	CodeUnknown          Code = 0
-	CodeInternal         Code = 1
-	CodeValidation       Code = 2
-	CodeResourceNotFound Code = 3
+	CodeUnknown               Code = 0
+	CodeInternal              Code = 1
+	CodeValidation            Code = 2
+	CodeResourceNotFound      Code = 3
+	CodeResourceAlreadyExists Code = 4
+	CodeTimeout               Code = 5
 )
 
 var codeToStr = map[Code]string{
-	CodeUnknown:          "UNKNOWN",
-	CodeInternal:         "INTERNAL",
-	CodeValidation:       "VALIDATION",
-	CodeResourceNotFound: "RESOURCE_NOT_FOUND",
+	CodeUnknown:               "UNKNOWN",
+	CodeInternal:              "INTERNAL",
+	CodeValidation:            "VALIDATION",
+	CodeResourceNotFound:      "RESOURCE_NOT_FOUND",
+	CodeResourceAlreadyExists: "RESOURCE_ALREADY_EXISTS",
+	CodeTimeout:               "TIMEOUT",
 }
 var strToCode = make(map[string]Code)
 

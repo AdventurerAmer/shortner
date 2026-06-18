@@ -11,16 +11,16 @@ import (
 )
 
 type Handlers struct {
-	logger         *logging.Logger
-	cfg            *config.ServiceConfig
-	redirectingSrv ports.RedirectingService
+	logger *logging.Logger
+	cfg    *config.ServiceConfig
+	srv    ports.RedirectingService
 }
 
-func NewHandlers(logger *logging.Logger, cfg *config.ServiceConfig, redirectingSrv ports.RedirectingService) *Handlers {
+func NewHandlers(logger *logging.Logger, cfg *config.ServiceConfig, srv ports.RedirectingService) *Handlers {
 	return &Handlers{
-		logger:         logger,
-		cfg:            cfg,
-		redirectingSrv: redirectingSrv,
+		logger: logger,
+		cfg:    cfg,
+		srv:    srv,
 	}
 }
 
@@ -32,9 +32,9 @@ func (h *Handlers) Redirect(c *web.Context) (any, error) {
 	ctx, cancel := context.WithTimeout(c.Ctx(), h.cfg.DefaultTimeout)
 	defer cancel()
 
-	resp, err := h.redirectingSrv.Redirect(ctx, req)
+	resp, err := h.srv.Redirect(ctx, req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to redirect url: %w", err)
+		return nil, fmt.Errorf("'srv.Redirect' failed: %w", err)
 	}
 
 	return resp, nil

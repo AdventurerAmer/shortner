@@ -26,12 +26,10 @@ func Validate(s any) error {
 
 func formatValidationErrors(err error) map[string]string {
 	errs := make(map[string]string)
-
 	for _, err := range err.(validator.ValidationErrors) {
 		field := err.Field()
 		errs[field] = getErrorMessage(err)
 	}
-
 	return errs
 }
 
@@ -43,6 +41,8 @@ func getErrorMessage(err validator.FieldError) string {
 		return "Must be a valid email address"
 	case "min":
 		return "Must be at least " + err.Param() + " characters"
+	case "max":
+		return "Must be at most " + err.Param() + " characters"
 	case "oneof":
 		return "Must be one of: " + err.Param()
 	case "url":
