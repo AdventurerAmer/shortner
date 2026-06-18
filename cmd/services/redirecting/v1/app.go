@@ -23,7 +23,18 @@ func Run() int {
 	logger := logging.New(cfg)
 
 	cassandra, err := infra.ConnectToCassandra(context.TODO(), &cfg.Infrastructure.Database)
+	if err != nil {
+		logger.Error("cassandra connection failed", "error", err)
+		return 1
+	}
 	defer infra.CloseCassandra(context.TODO(), cassandra)
+
+	redisCtx, err := infra.ConnectToRedis(context.TODO(), &cfg.Infrastructure.Redis)
+	if err != nil {
+		logger.Error("cassandra connection failed", "error", err)
+		return 1
+	}
+	defer infra.CloseRedis(context.TODO(), redisCtx)
 
 	app := web.New(cfg.Env, logger, &cfg.Services.Redirecting)
 

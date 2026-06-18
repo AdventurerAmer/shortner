@@ -1,9 +1,14 @@
 package config
 
-import "time"
+import (
+	"time"
+
+	"github.com/redis/go-redis/v9"
+)
 
 type InfrastructureConfig struct {
 	Database CassandraDatabaseConfig `koanf:"database"`
+	Redis    RedisConfig             `koanf:"redis"`
 }
 
 type CassandraDatabaseConfig struct {
@@ -11,4 +16,15 @@ type CassandraDatabaseConfig struct {
 	Port        int           `koanf:"port" validate:"required,min=1,max=65535"`
 	Keyspace    string        `koanf:"keyspace" validate:"required,min=1"`
 	ConnTimeout time.Duration `koanf:"connTimeout" validate:"required,min=1s"`
+}
+
+type RedisConfig struct {
+	Address  string `koanf:"address" validate:"required,url"`
+	Username string `koanf:"username" validate:"required,min=1"`
+	Password string `koanf:"password" validate:"required,min=1"`
+	Database int    `koanf:"database" validate:"required,min=0"`
+}
+
+type Redis struct {
+	Client *redis.Client
 }

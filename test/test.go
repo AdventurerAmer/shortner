@@ -12,7 +12,7 @@ import (
 
 type Cassandra struct {
 	Logger    *logging.Logger
-	Cassandra *infra.Cassandra
+	Cassandra infra.Cassandra
 	Keyspace  string
 }
 

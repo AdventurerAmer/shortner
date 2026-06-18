@@ -17,3 +17,9 @@ infrastructure:
     port: 9042
     keyspace: shortner
     connTimeout: 1s
+
+  redis:
+    address: localhost:6379
+    username: admin
+    password: admin
+    database: 1

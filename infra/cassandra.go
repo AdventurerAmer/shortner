@@ -11,7 +11,7 @@ type Cassandra struct {
 	Session *gocql.Session
 }
 
-func ConnectToCassandra(ctx context.Context, cfg *config.CassandraDatabaseConfig) (*Cassandra, error) {
+func ConnectToCassandra(ctx context.Context, cfg *config.CassandraDatabaseConfig) (Cassandra, error) {
 	cluster := gocql.NewCluster(cfg.Host)
 	cluster.Keyspace = cfg.Keyspace
 	cluster.Port = cfg.Port
@@ -20,11 +20,12 @@ func ConnectToCassandra(ctx context.Context, cfg *config.CassandraDatabaseConfig
 
 	session, err := cluster.CreateSession()
 	if err != nil {
-		return nil, err
+		return Cassandra{}, err
 	}
-	return &Cassandra{Session: session}, nil
+
+	return Cassandra{Session: session}, nil
 }
 
-func CloseCassandra(ctx context.Context, cassandra *Cassandra) {
+func CloseCassandra(ctx context.Context, cassandra Cassandra) {
 	cassandra.Session.Close()
 }
