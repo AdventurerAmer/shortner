@@ -26,7 +26,7 @@ func Run() int {
 	cassandra, err := infra.ConnectToCassandra(context.TODO(), &cfg.Infrastructure.Database)
 	defer infra.CloseCassandra(context.TODO(), cassandra)
 
-	app := web.New(logger, &cfg.Services.Shortening)
+	app := web.New(cfg.Env, logger, &cfg.Services.Shortening)
 
 	urlmappingRepo := urlmappingrepo.NewCassandra(cassandra.Session, cfg.Infrastructure.Database.Keyspace)
 

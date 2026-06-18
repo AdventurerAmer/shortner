@@ -14,12 +14,14 @@ import (
 )
 
 type App struct {
+	Env    config.Env
 	Cfg    *config.ServiceConfig
 	Logger *logging.Logger
 }
 
-func New(logger *logging.Logger, cfg *config.ServiceConfig) *App {
+func New(env config.Env, logger *logging.Logger, cfg *config.ServiceConfig) *App {
 	app := &App{
+		Env:    env,
 		Cfg:    cfg,
 		Logger: logger.With(slog.String("service", cfg.Name)),
 	}

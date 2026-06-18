@@ -4,9 +4,9 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/AdventurerAmer/shortner/config"
+	"github.com/ThreeDotsLabs/humanslog"
 )
 
 type Logger = slog.Logger
@@ -19,7 +19,7 @@ func New(cfg *config.Config) *Logger {
 		replaceAttr = replaceAttrLocal
 	}
 
-	opts := &slog.HandlerOptions{
+	handlerOpts := &slog.HandlerOptions{
 		Level:       level,
 		AddSource:   *cfg.Observability.Logging.AddSource,
 		ReplaceAttr: replaceAttr,
@@ -27,9 +27,17 @@ func New(cfg *config.Config) *Logger {
 
 	var handler slog.Handler
 	if cfg.Observability.Logging.Format == "text" {
-		handler = slog.NewTextHandler(os.Stdout, opts)
+		opts := &humanslog.Options{
+			HandlerOptions:    handlerOpts,
+			SortKeys:          true,
+			TimeFormat:        "[15:04:05]",
+			NewLineAfterLog:   true,
+			DebugColor:        humanslog.Magenta,
+			StringerFormatter: true,
+		}
+		handler = humanslog.NewHandler(os.Stdout, opts)
 	} else {
-		handler = slog.NewJSONHandler(os.Stdout, opts)
+		handler = slog.NewJSONHandler(os.Stdout, handlerOpts)
 	}
 
 	logger := slog.New(handler)
@@ -64,13 +72,6 @@ func replaceAttrLocal(groups []string, attr slog.Attr) slog.Attr {
 				return attr
 			}
 			source.File = rel
-		}
-	case slog.TimeKey:
-		if len(groups) == 0 {
-			if t, ok := attr.Value.Any().(time.Time); ok {
-				formattedTime := t.Format("Monday, Jan _2, 2006 at 3:04PM")
-				return slog.String(slog.TimeKey, formattedTime)
-			}
 		}
 	}
 	return attr

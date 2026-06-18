@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"runtime/debug"
 	"time"
 
+	"github.com/AdventurerAmer/shortner/config"
 	"github.com/AdventurerAmer/shortner/errs"
 	"github.com/google/uuid"
 )
@@ -35,10 +37,14 @@ func (app *App) Recover(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if r := recover(); r != nil {
-				// TODO: pretty print stack here...
 				err := fmt.Errorf("%+v", r)
-				app.Logger.Error("recovering from panic", "error", err)
 
+				if app.Env == config.EnvProd {
+					app.Logger.Error("recovered from panic", "error", err)
+				} else {
+					stackTrace := string(debug.Stack())
+					app.Logger.Error("recovered from panic", "error", err, "stack-trace", stackTrace)
+				}
 				resp := errs.NewInternal(err)
 				status := errs.HTTPStatus(resp.Code)
 
