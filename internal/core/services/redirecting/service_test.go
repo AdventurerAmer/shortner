@@ -73,7 +73,7 @@ func TestRedirectingService_RedirectSuccessForValidInput(t *testing.T) {
 
 func createRepo(t *testing.T) ports.URLMappingRepository {
 	t.Helper()
-	URLMappingRepo := urlmappingrepo.NewCassandra(testCtx.Cassandra.Session, testCtx.Keyspace)
+	URLMappingRepo := urlmappingrepo.NewCassandra(testCtx.Cassandra.Session, testCtx.Keyspace, ports.NewCacheStub(), testCtx.Logger)
 	return URLMappingRepo
 }
 

@@ -7,6 +7,7 @@ import (
 
 	"github.com/AdventurerAmer/shortner/config"
 	"github.com/AdventurerAmer/shortner/infra"
+	"github.com/AdventurerAmer/shortner/internal/caches"
 	"github.com/AdventurerAmer/shortner/internal/core/services/redirecting"
 	"github.com/AdventurerAmer/shortner/internal/repos/urlmappingrepo"
 	"github.com/AdventurerAmer/shortner/logging"
@@ -31,21 +32,26 @@ func Run() int {
 
 	redisCtx, err := infra.ConnectToRedis(context.TODO(), &cfg.Infrastructure.Redis)
 	if err != nil {
-		logger.Error("cassandra connection failed", "error", err)
+		logger.Error("redis connection failed", "error", err)
 		return 1
 	}
 	defer infra.CloseRedis(context.TODO(), redisCtx)
 
+	redisCache := caches.NewRedis(redisCtx.Client)
+
 	app := web.New(cfg.Env, logger, &cfg.Services.Redirecting)
 
-	URLMappingRepo := urlmappingrepo.NewCassandra(cassandra.Session, cfg.Infrastructure.Database.Keyspace)
+	URLMappingRepo := urlmappingrepo.NewCassandra(
+		cassandra.Session,
+		cfg.Infrastructure.Database.Keyspace,
+		redisCache, logger)
 
 	redirectingCfg := redirecting.Config{
 		URLMappingRepo: URLMappingRepo,
 	}
-	redirectingSrv := redirecting.New(logger, redirectingCfg)
+	srv := redirecting.New(logger, redirectingCfg)
 
-	handlers := NewHandlers(logger, &cfg.Services.Redirecting, redirectingSrv)
+	handlers := NewHandlers(logger, &cfg.Services.Redirecting, srv)
 
 	mux := web.NewMux(logger)
 

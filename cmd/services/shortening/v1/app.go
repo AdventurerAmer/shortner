@@ -8,6 +8,7 @@ import (
 	"github.com/AdventurerAmer/shortner/config"
 	"github.com/AdventurerAmer/shortner/infra"
 	"github.com/AdventurerAmer/shortner/internal/core/domain"
+	"github.com/AdventurerAmer/shortner/internal/core/ports"
 	"github.com/AdventurerAmer/shortner/internal/core/services/shortening"
 	"github.com/AdventurerAmer/shortner/internal/repos/urlmappingrepo"
 	"github.com/AdventurerAmer/shortner/logging"
@@ -32,7 +33,7 @@ func Run() int {
 
 	app := web.New(cfg.Env, logger, &cfg.Services.Shortening)
 
-	urlmappingRepo := urlmappingrepo.NewCassandra(cassandra.Session, cfg.Infrastructure.Database.Keyspace)
+	urlmappingRepo := urlmappingrepo.NewCassandra(cassandra.Session, cfg.Infrastructure.Database.Keyspace, ports.NewCacheStub(), logger)
 
 	snowflake := domain.NewSnowflake()
 

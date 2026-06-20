@@ -4,20 +4,24 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/AdventurerAmer/shortner/errs"
 	"github.com/AdventurerAmer/shortner/internal/core/domain"
 	"github.com/AdventurerAmer/shortner/internal/core/ports"
+	"github.com/AdventurerAmer/shortner/logging"
 	gocql "github.com/apache/cassandra-gocql-driver/v2"
 )
 
 type cassandraRepo struct {
 	session  *gocql.Session
 	keyspace string
+	cache    ports.Cache
+	logger   *logging.Logger
 }
 
-func NewCassandra(session *gocql.Session, keyspace string) ports.URLMappingRepository {
-	return &cassandraRepo{session: session, keyspace: keyspace}
+func NewCassandra(session *gocql.Session, keyspace string, cache ports.Cache, logger *logging.Logger) ports.URLMappingRepository {
+	return &cassandraRepo{session: session, keyspace: keyspace, cache: cache, logger: logger}
 }
 
 func (repo *cassandraRepo) Create(ctx context.Context, m *domain.URLMapping) error {
@@ -45,11 +49,15 @@ func (repo *cassandraRepo) Create(ctx context.Context, m *domain.URLMapping) err
 }
 
 func (repo *cassandraRepo) Get(ctx context.Context, alias string) (*domain.URLMapping, error) {
+	m := domain.URLMapping{Alias: alias}
+	cacheErr := repo.cache.Get(ctx, alias, &m)
+	if cacheErr == nil {
+		return &m, nil
+	}
 	stmt := fmt.Sprintf(
 		`SELECT long_url, created_at, user_id 
 		 FROM %s.url_mappings
 		 WHERE alias = ?`, repo.keyspace)
-	m := domain.URLMapping{Alias: alias}
 	query := repo.session.Query(stmt, alias).Consistency(gocql.One)
 	if err := query.ScanContext(ctx, &m.LongURL, &m.CreatedAt, &m.UserId); err != nil {
 		var timeout gocql.RequestErrReadTimeout
@@ -60,6 +68,12 @@ func (repo *cassandraRepo) Get(ctx context.Context, alias string) (*domain.URLMa
 			return nil, errs.NewNotFound(err, "url mapping is not found")
 		}
 		return nil, fmt.Errorf("'ScanContext' failed: %w", err)
+	}
+	if errs.IsNotFound(cacheErr) {
+		ttl := 10 * time.Minute // TODO: hardcoding TTL
+		if err := repo.cache.Put(ctx, alias, m, ttl); err != nil {
+			repo.logger.Error("failed to set cache entry", "key", alias, "error", err)
+		}
 	}
 	return &m, nil
 }
