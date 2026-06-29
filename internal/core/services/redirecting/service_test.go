@@ -9,6 +9,7 @@ import (
 	"github.com/AdventurerAmer/shortner/internal/core/domain"
 	"github.com/AdventurerAmer/shortner/internal/core/ports"
 	"github.com/AdventurerAmer/shortner/internal/repos/urlmappingrepo"
+	"github.com/AdventurerAmer/shortner/snowflake"
 	"github.com/AdventurerAmer/shortner/test"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -36,10 +37,10 @@ func TestRedirectingService_RedirectSuccessForValidInput(t *testing.T) {
 	defer cancel()
 
 	shard := "sa"
-	snowflake := domain.NewSnowflake()
+	idGenerator := snowflake.New(shard)
 
 	m := &domain.URLMapping{
-		Alias:     snowflake.NextBase62(shard),
+		Alias:     idGenerator.Next(),
 		LongURL:   "www.example.com/examples",
 		CreatedAt: time.Now().UTC(),
 		UserId:    uuid.NewString(),

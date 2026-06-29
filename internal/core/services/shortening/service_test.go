@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/AdventurerAmer/shortner/internal/core/domain"
 	"github.com/AdventurerAmer/shortner/internal/core/ports"
 	"github.com/AdventurerAmer/shortner/internal/repos/urlmappingrepo"
+	"github.com/AdventurerAmer/shortner/snowflake"
 	"github.com/AdventurerAmer/shortner/test"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -87,8 +87,7 @@ func createService(t *testing.T) ports.ShorteningService {
 	cfg := Config{
 		URLMappingRepo: repo,
 		ShortURLPrefix: "",
-		Shard:          "sa",
-		Snowflake:      domain.NewSnowflake(),
+		IdGenerator:    snowflake.New("sa"),
 	}
 	return &service{
 		Config: cfg,

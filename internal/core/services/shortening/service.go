@@ -7,14 +7,14 @@ import (
 
 	"github.com/AdventurerAmer/shortner/internal/core/domain"
 	"github.com/AdventurerAmer/shortner/internal/core/ports"
+	"github.com/AdventurerAmer/shortner/snowflake"
 	"github.com/AdventurerAmer/shortner/validation"
 )
 
 type Config struct {
 	ShortURLPrefix string
-	Shard          string
 	URLMappingRepo ports.URLMappingRepository
-	Snowflake      *domain.Snowflake
+	IdGenerator    *snowflake.Generator
 }
 
 type service struct {
@@ -32,7 +32,7 @@ func (srv *service) Shorten(ctx context.Context, userId string, req ports.Shorte
 	if err := validation.Validate(&req); err != nil {
 		return ports.ShortenURLResponse{}, fmt.Errorf("validation failed: %w", err)
 	}
-	alias := srv.Snowflake.NextBase62(srv.Shard)
+	alias := srv.IdGenerator.Next()
 	mapping := &domain.URLMapping{
 		Alias:     alias,
 		LongURL:   req.LongURL,

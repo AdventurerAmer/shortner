@@ -1,4 +1,4 @@
-package domain
+package snowflake
 
 import (
 	"strings"
@@ -7,24 +7,33 @@ import (
 )
 
 const (
-	sequenceBits = 23 // 8,388,608 IDs per ms
-	maxSequence  = (1 << sequenceBits) - 1
-	customEpoch  = 1704067200000 // 2024-01-01 00:00:00 UTC
+	Epoch = 1704067200000 // 2024-01-01 00:00:00 UTC
+
+	TimestampBits   = 41
+	SequenceNumBits = 23 // 8,388,608 IDs per ms
+	MaxSequenceNum  = (1 << SequenceNumBits) - 1
 )
 
-type Snowflake struct {
+type Generator struct {
 	mu            sync.Mutex
+	shard         string
 	lastTimestamp int64
-	sequence      int64
+	sequenceNum   int64
 }
 
-func NewSnowflake() *Snowflake {
-	return &Snowflake{
+func New(shard string) *Generator {
+	return &Generator{
+		shard:         shard,
 		lastTimestamp: time.Now().UnixMilli(),
 	}
 }
 
-func (g *Snowflake) Next() int64 {
+func (g *Generator) Next() string {
+	id := g.NextInt64()
+	return toBase62(id)
+}
+
+func (g *Generator) NextInt64() int64 {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
@@ -33,24 +42,20 @@ func (g *Snowflake) Next() int64 {
 		timestamp = g.lastTimestamp
 	}
 	if timestamp == g.lastTimestamp {
-		g.sequence = (g.sequence + 1) & maxSequence
-		if g.sequence == 0 {
+		g.sequenceNum = (g.sequenceNum + 1) & MaxSequenceNum
+		if g.sequenceNum == 0 {
 			// Wait until next millisecond
 			for timestamp <= g.lastTimestamp {
 				timestamp = time.Now().UnixMilli()
 			}
 		}
 	} else {
-		g.sequence = 0
+		g.sequenceNum = 0
 	}
 
 	g.lastTimestamp = timestamp
-	id := (timestamp - customEpoch) | g.sequence
+	id := (timestamp - Epoch) | g.sequenceNum
 	return id
-}
-
-func (g *Snowflake) NextBase62(prefix string) string {
-	return prefix + toBase62(g.Next())
 }
 
 const base62Alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
@@ -59,13 +64,11 @@ func toBase62(num int64) string {
 	if num == 0 {
 		return "0"
 	}
-
 	var encoded strings.Builder
 	for num > 0 {
 		encoded.WriteByte(base62Alphabet[num%62])
 		num /= 62
 	}
-
 	// Reverse the string
 	runes := []rune(encoded.String())
 	for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {
