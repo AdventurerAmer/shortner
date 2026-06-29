@@ -46,6 +46,7 @@ func (srv *service) IncrementClicks(ctx context.Context, req ports.IncrementClic
 	if err := validation.Validate(&req); err != nil {
 		return ports.IncrementClicksResponse{}, fmt.Errorf("validation failed: %w", err)
 	}
+
 	a, err := srv.AnalyticRepo.Get(ctx, req.Alias)
 	if err != nil {
 		if !errs.IsNotFound(err) {

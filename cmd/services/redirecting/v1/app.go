@@ -49,9 +49,9 @@ func Run() int {
 	redirectingCfg := redirecting.Config{
 		URLMappingRepo: URLMappingRepo,
 	}
-	srv := redirecting.New(logger, redirectingCfg)
+	redirecting := redirecting.New(logger, redirectingCfg)
 
-	handlers := NewHandlers(logger, &cfg.Services.Redirecting, srv)
+	handlers := NewHandlers(logger, &cfg.Services.Redirecting, redirecting)
 
 	mux := web.NewMux(logger)
 

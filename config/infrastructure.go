@@ -7,8 +7,9 @@ import (
 )
 
 type InfrastructureConfig struct {
-	Database CassandraDatabaseConfig `koanf:"database"`
-	Redis    RedisConfig             `koanf:"redis"`
+	Database       CassandraDatabaseConfig `koanf:"database"`
+	Redis          RedisConfig             `koanf:"redis"`
+	RedisAnalytics RedisConfig             `koanf:"redisAnalytics"`
 }
 
 type CassandraDatabaseConfig struct {

@@ -27,3 +27,9 @@ infrastructure:
     username: admin
     password: admin
     database: 1
+  
+  redisAnalytics:
+    address: localhost:6380
+    username: admin
+    password: admin
+    database: 1

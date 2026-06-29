@@ -30,7 +30,7 @@ func Run() int {
 	}
 	defer infra.CloseCassandra(context.TODO(), cassandra)
 
-	redisCtx, err := infra.ConnectToRedis(context.TODO(), &cfg.Infrastructure.Redis)
+	redisCtx, err := infra.ConnectToRedis(context.TODO(), &cfg.Infrastructure.RedisAnalytics)
 	if err != nil {
 		logger.Error("redis connection failed", "error", err)
 		return 1
