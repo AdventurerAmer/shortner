@@ -9,8 +9,8 @@ import (
 
 type URLMappingRepository interface {
 	Create(ctx context.Context, mapping *domain.URLMapping) error
-	Get(ctx context.Context, shortURL string) (*domain.URLMapping, error)
-	Delete(ctx context.Context, shortURL string) error
+	Get(ctx context.Context, alias string) (*domain.URLMapping, error)
+	Delete(ctx context.Context, alias string) error
 }
 
 type ShorteningService interface {

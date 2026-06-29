@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/AdventurerAmer/shortner/internal/core/domain"
+	"github.com/AdventurerAmer/shortner/internal/core/ports"
 	"github.com/AdventurerAmer/shortner/test"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -108,5 +109,7 @@ func createRepo(t *testing.T) *cassandraRepo {
 	return &cassandraRepo{
 		session:  testCtx.Cassandra.Session,
 		keyspace: testCtx.Keyspace,
+		cache:    ports.NewCacheStub(),
+		logger:   testCtx.Logger,
 	}
 }
