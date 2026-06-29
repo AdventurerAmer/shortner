@@ -11,6 +11,10 @@ services:
     name: redirecting
     port: 3031
   
+  analytics:
+    name: analytics
+    port: 3032
+  
 infrastructure:
   database:
     host: localhost

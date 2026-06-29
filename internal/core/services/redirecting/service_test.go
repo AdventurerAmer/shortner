@@ -29,7 +29,7 @@ func TestMain(m *testing.M) {
 	os.Exit(exitCode)
 }
 
-func TestRedirectingService_RedirectSuccessForValidInput(t *testing.T) {
+func TestRedirectingService_RedirectSucceedsForValidInput(t *testing.T) {
 	repo := createRepo(t)
 	service := createService(t)
 
@@ -50,6 +50,12 @@ func TestRedirectingService_RedirectSuccessForValidInput(t *testing.T) {
 		t.Skipf("failed to create url mapping: %+v", err)
 	}
 
+	t.Cleanup(func() {
+		dctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+		repo.Delete(dctx, m.Alias)
+	})
+
 	req := ports.RedirectRequest{
 		Alias: m.Alias,
 	}
@@ -64,12 +70,6 @@ func TestRedirectingService_RedirectSuccessForValidInput(t *testing.T) {
 	if !cmp.Equal(expected, got, cmpopts.EquateApproxTime(time.Second)) {
 		t.Errorf("expected %+v, got %+v, diff %+v", expected, got, cmp.Diff(expected, got))
 	}
-
-	t.Cleanup(func() {
-		dctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		defer cancel()
-		repo.Delete(dctx, m.Alias)
-	})
 }
 
 func createRepo(t *testing.T) ports.URLMappingRepository {

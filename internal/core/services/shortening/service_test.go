@@ -2,8 +2,9 @@ package shortening
 
 import (
 	"context"
-	"fmt"
+	"net/url"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -29,7 +30,7 @@ func TestMain(m *testing.M) {
 	os.Exit(exitCode)
 }
 
-func TestShorteningService_ShortenSuccessForValidInput(t *testing.T) {
+func TestShorteningService_ShortenSucceedsForValidInput(t *testing.T) {
 	repo := createRepo(t)
 	service := createService(t)
 
@@ -37,21 +38,34 @@ func TestShorteningService_ShortenSuccessForValidInput(t *testing.T) {
 	defer cancel()
 
 	req := ports.ShortenURLRequest{
-		LongURL: fmt.Sprintf("www.example.com/examples/%s", uuid.NewString()),
+		LongURL: "https://www.example.com/examples/1234",
 	}
 	userId := uuid.NewString()
 	resp, err := service.Shorten(ctx, userId, req)
 	if err != nil {
-		t.Errorf("expected no error, got %+v", err)
+		t.Fatalf("expected no error, got %+v", err)
 	}
 
-	m, err := repo.Get(ctx, resp.ShortURL)
+	parsedURL, err := url.Parse(resp.ShortURL)
+	if err != nil {
+		t.Skipf("parse URL failed: %+v", err)
+	}
+	parts := strings.Split(parsedURL.Path, "/")
+	alias := parts[len(parts)-1]
+
+	t.Cleanup(func() {
+		dctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+		repo.Delete(dctx, alias)
+	})
+
+	m, err := repo.Get(ctx, alias)
 	if err != nil {
 		t.Skipf("failed to get url mapping: %+v", err)
 	}
 
 	{
-		expected := resp.ShortURL
+		expected := alias
 		got := m.Alias
 
 		if !cmp.Equal(expected, got, cmpopts.EquateApproxTime(time.Second)) {
@@ -67,12 +81,6 @@ func TestShorteningService_ShortenSuccessForValidInput(t *testing.T) {
 			t.Errorf("expected %+v, got %+v, diff %+v", expected, got, cmp.Diff(expected, got))
 		}
 	}
-
-	t.Cleanup(func() {
-		dctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		defer cancel()
-		repo.Delete(dctx, m.Alias)
-	})
 }
 
 func createRepo(t *testing.T) ports.URLMappingRepository {

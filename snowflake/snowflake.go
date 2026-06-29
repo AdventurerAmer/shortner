@@ -30,7 +30,7 @@ func New(shard string) *Generator {
 
 func (g *Generator) Next() string {
 	id := g.NextInt64()
-	return toBase62(id)
+	return g.shard + toBase62(id)
 }
 
 func (g *Generator) NextInt64() int64 {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/AdventurerAmer/shortner/errs"
 	"github.com/AdventurerAmer/shortner/internal/core/ports"
 	"github.com/AdventurerAmer/shortner/logging"
 	"github.com/AdventurerAmer/shortner/validation"
@@ -31,6 +32,9 @@ func (srv *service) Redirect(ctx context.Context, req ports.RedirectRequest) (po
 
 	mapping, err := srv.URLMappingRepo.Get(ctx, req.Alias)
 	if err != nil {
+		if errs.IsNotFound(err) {
+			return ports.RedirectResponse{}, err
+		}
 		return ports.RedirectResponse{}, fmt.Errorf("'URLMappingRepo.Get' failed: %w", err)
 	}
 	resp := ports.RedirectResponse{

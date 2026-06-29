@@ -18,7 +18,7 @@ type cassandraRepo struct {
 	cache    ports.Cache
 }
 
-func NewCassandra(session *gocql.Session, keyspace string, cache ports.Cache) ports.AnalyicRepository {
+func NewCassandra(session *gocql.Session, keyspace string, cache ports.Cache) ports.AnalyticRepository {
 	return &cassandraRepo{session: session, keyspace: keyspace, cache: cache}
 }
 
@@ -26,7 +26,7 @@ func (repo *cassandraRepo) Create(ctx context.Context, a *domain.Analytic) error
 	stmt := fmt.Sprintf(
 		`INSERT INTO 
 		 %s.analytics (alias, created_at, updated_at, clicks, version)
-		 VALUES (?, ?, ?, ?)`, repo.keyspace)
+		 VALUES (?, ?, ?, ?, ?)`, repo.keyspace)
 
 	q := repo.session.Query(stmt, a.Alias, a.CreatedAt, a.UpdatedAt, a.Clicks, a.Version)
 	if err := q.ExecContext(ctx); err != nil {
@@ -77,10 +77,11 @@ func (repo *cassandraRepo) Get(ctx context.Context, alias string) (*domain.Analy
 func (repo *cassandraRepo) Update(ctx context.Context, a *domain.Analytic) error {
 	stmt := fmt.Sprintf(
 		`UPDATE %s.analytics
-		 SET updated_at = ?, clicks = ?, version = version + 1 
-		 WHERE alias = ? AND version = ?`, repo.keyspace)
+		 SET updated_at = ?, clicks = ?, version = ?
+		 WHERE alias = ?
+		 IF version = ?`, repo.keyspace)
 
-	query := repo.session.Query(stmt, time.Now().UTC(), a.Clicks, a.Alias, a.Version).Consistency(gocql.One)
+	query := repo.session.Query(stmt, a.UpdatedAt, a.Clicks, a.Version+1, a.Alias, a.Version).Consistency(gocql.One)
 	if err := query.ExecContext(ctx); err != nil {
 		var (
 			readTimeout  gocql.RequestErrReadTimeout
