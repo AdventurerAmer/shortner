@@ -73,8 +73,11 @@ func (mux *Mux) composeHTTPHandlerFunc(handler Handler) http.HandlerFunc {
 			w.WriteHeader(status)
 			resp = expectedErr
 		}
-		if err := writeJSON(resp, w); err != nil {
-			mux.logger.Error("failed to write resposne to client", "error", err)
+		// We can have nil 'resp' in case of a (302) redirection for-example
+		if resp != nil {
+			if err := writeJSON(resp, w); err != nil {
+				mux.logger.Error("failed to write resposne to client", "error", err)
+			}
 		}
 	}
 }

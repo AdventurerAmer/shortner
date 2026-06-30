@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	analyticsV1 "github.com/AdventurerAmer/shortner/cmd/services/analytics/v1"
 	"github.com/AdventurerAmer/shortner/config"
 	"github.com/AdventurerAmer/shortner/infra"
 	"github.com/AdventurerAmer/shortner/internal/caches"
@@ -51,7 +52,8 @@ func Run() int {
 	}
 	redirecting := redirecting.New(logger, redirectingCfg)
 
-	handlers := NewHandlers(logger, &cfg.Services.Redirecting, redirecting)
+	analyticsClient := analyticsV1.NewClient("http://localhost:3032") // TODO: hardcoding
+	handlers := NewHandlers(logger, &cfg.Services.Redirecting, redirecting, analyticsClient)
 
 	mux := web.NewMux(logger)
 

@@ -60,7 +60,7 @@ func Run() int {
 	mux.Use(app.Recover)
 
 	mux.Get("/health", app.DefaultHealthHandler)
-	mux.Get("/v1/clicks/{alias}", handlers.Clicks)
+	mux.Post("/v1/clicks/{alias}", handlers.Clicks)
 
 	app.Run(mux)
 
