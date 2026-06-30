@@ -16,6 +16,8 @@ func HTTPStatus(code Code) int {
 		return http.StatusConflict
 	case CodeTimeout:
 		return http.StatusRequestTimeout
+	case CodeUnsupportedFormat:
+		return http.StatusUnsupportedMediaType
 	}
 	return http.StatusInternalServerError
 }

@@ -25,7 +25,7 @@ func NewHandlers(cfg *config.ServiceConfig, srv ports.ShorteningService) *Handle
 
 func (h *Handlers) Shorten(c *web.Context) (any, error) {
 	var req ports.ShortenURLRequest
-	if err := c.Bind(&req); err != nil {
+	if err := c.BindJSON(&req); err != nil {
 		return nil, err
 	}
 

@@ -64,14 +64,14 @@ func (mux *Mux) composeHTTPHandlerFunc(handler Handler) http.HandlerFunc {
 		}
 		resp, err := handler(c)
 		if err != nil {
-			var appErr *errs.Error
-			if !errors.As(err, &appErr) {
-				appErr = errs.Wrap(err, errs.CodeInternal, "internal server error")
+			var expectedErr *errs.Error
+			if !errors.As(err, &expectedErr) {
+				expectedErr = errs.Wrap(err, errs.CodeInternal, "internal server error")
 				mux.logger.Error("internal server error", "error", err)
 			}
-			status := errs.HTTPStatus(appErr.Code)
+			status := errs.HTTPStatus(expectedErr.Code)
 			w.WriteHeader(status)
-			resp = appErr
+			resp = expectedErr
 		}
 		if err := writeJSON(resp, w); err != nil {
 			mux.logger.Error("failed to write resposne to client", "error", err)

@@ -11,6 +11,7 @@ const (
 	CodeResourceNotFound      Code = 3
 	CodeResourceAlreadyExists Code = 4
 	CodeTimeout               Code = 5
+	CodeUnsupportedFormat     Code = 6
 )
 
 var codeToStr = map[Code]string{
@@ -20,6 +21,7 @@ var codeToStr = map[Code]string{
 	CodeResourceNotFound:      "RESOURCE_NOT_FOUND",
 	CodeResourceAlreadyExists: "RESOURCE_ALREADY_EXISTS",
 	CodeTimeout:               "TIMEOUT",
+	CodeUnsupportedFormat:     "UNSUPPORTED_FORMAT",
 }
 var strToCode = make(map[string]Code)
 
