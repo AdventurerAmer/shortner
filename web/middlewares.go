@@ -18,6 +18,10 @@ const RequestIdHeader = "X-Request-ID"
 
 type requestIdCtxKey struct{}
 
+func GetRequestId(ctx context.Context) string {
+	return ctx.Value(requestIdCtxKey{}).(string)
+}
+
 func RequestId(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		requestId := r.Header.Get(RequestIdHeader)
@@ -34,11 +38,7 @@ func RequestId(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func GetRequestId(ctx context.Context) string {
-	return ctx.Value(requestIdCtxKey{}).(string)
-}
-
-func Recover(env config.Env) func(next http.HandlerFunc) http.HandlerFunc {
+func Recover(env config.Env) Middleware {
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 			defer func() {
@@ -64,6 +64,16 @@ func Recover(env config.Env) func(next http.HandlerFunc) http.HandlerFunc {
 				}
 			}()
 			next(w, r)
+		}
+	}
+}
+
+func Timeout(timeout time.Duration) Middleware {
+	return func(next http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			dctx, cancel := context.WithTimeout(r.Context(), timeout)
+			defer cancel()
+			next(w, r.WithContext(dctx))
 		}
 	}
 }

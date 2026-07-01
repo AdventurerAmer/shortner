@@ -17,7 +17,7 @@ func newHandlers(service ports.AnalyticService) *handlers {
 	}
 }
 
-func (h *handlers) Clicks(c *web.Context) (any, error) {
+func (h *handlers) clicks(c *web.Context) (any, error) {
 	req := ports.IncrementClicksRequest{
 		Alias:  c.Request.PathValue("alias"),
 		Clicks: 1,

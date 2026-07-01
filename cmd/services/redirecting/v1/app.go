@@ -50,18 +50,19 @@ func Run() int {
 	redirectingCfg := redirecting.Config{
 		URLMappingRepo: URLMappingRepo,
 	}
-	redirecting := redirecting.New(redirectingCfg)
+	service := redirecting.New(redirectingCfg)
 
 	analyticsClient := analyticsV1.NewClient("http://localhost:3032") // TODO: hardcoding addresss
-	handlers := NewHandlers(&cfg.Services.Redirecting, redirecting, analyticsClient)
+	handlers := newHandlers(service, analyticsClient)
 
 	mux := web.NewMux(logger)
 
 	mux.Use(web.RequestId)
 	mux.Use(web.Logging)
 	mux.Use(web.Recover(cfg.Env))
+	mux.Use(web.Timeout(serviceCfg.DefaultTimeout))
 
-	mux.Get("/v1/redirect/{alias}", handlers.Redirect)
+	mux.Get("/v1/redirect/{alias}", handlers.redirect)
 
 	app := web.New(serviceCfg, logger)
 	app.Run(mux)

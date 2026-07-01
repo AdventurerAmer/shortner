@@ -33,8 +33,8 @@ func (mux *Mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	for _, m := range slices.Backward(mux.middlewares) {
 		serve = m(serve)
 	}
-	rctx := logging.Set(r.Context(), mux.logger)
-	serve(w, r.WithContext(rctx))
+	ctx := logging.Set(r.Context(), mux.logger)
+	serve(w, r.WithContext(ctx))
 }
 
 func (mux *Mux) Post(route string, handler Handler) {

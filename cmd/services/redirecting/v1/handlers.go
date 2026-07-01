@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/AdventurerAmer/shortner/config"
 	"github.com/AdventurerAmer/shortner/internal/core/ports"
 	"github.com/AdventurerAmer/shortner/logging"
 	"github.com/AdventurerAmer/shortner/web"
@@ -14,35 +13,30 @@ import (
 	analyticsV1 "github.com/AdventurerAmer/shortner/cmd/services/analytics/v1"
 )
 
-type Handlers struct {
-	cfg             *config.ServiceConfig
-	srv             ports.RedirectingService
+type handlers struct {
+	service         ports.RedirectingService
 	analyticsClient *analyticsV1.Client
 }
 
-func NewHandlers(cfg *config.ServiceConfig, srv ports.RedirectingService, analyticsClient *analyticsV1.Client) *Handlers {
-	return &Handlers{
-		cfg:             cfg,
-		srv:             srv,
+func newHandlers(service ports.RedirectingService, analyticsClient *analyticsV1.Client) *handlers {
+	return &handlers{
+		service:         service,
 		analyticsClient: analyticsClient,
 	}
 }
 
-func (h *Handlers) Redirect(c *web.Context) (any, error) {
+func (h *handlers) redirect(c *web.Context) (any, error) {
 	req := ports.RedirectRequest{
 		Alias: c.Request.PathValue("alias"),
 	}
 
-	ctx, cancel := context.WithTimeout(c.Ctx(), h.cfg.DefaultTimeout)
-	defer cancel()
-
-	resp, err := h.srv.Redirect(ctx, req)
+	resp, err := h.service.Redirect(c.Ctx(), req)
 	if err != nil {
 		// TODO: html templates for not-found and err
 		// if errs.IsNotFound(err) {
 		// } else {
 		// }
-		return nil, fmt.Errorf("'srv.Redirect' failed: %w", err)
+		return nil, fmt.Errorf("'service.Redirect' failed: %w", err)
 	}
 
 	// http.StatusFound represents a temporary (302) redirect
@@ -53,7 +47,7 @@ func (h *Handlers) Redirect(c *web.Context) (any, error) {
 		dctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
 		if err := h.analyticsClient.IncrementClicks(dctx, alias); err != nil {
-			logger := logging.Get(ctx)
+			logger := logging.Get(dctx)
 			logger.Error("failed to increment clicks", "error", err)
 		}
 	}()

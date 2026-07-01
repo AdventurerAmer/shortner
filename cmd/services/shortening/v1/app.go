@@ -41,16 +41,17 @@ func Run() int {
 		URLMappingRepo: urlmappingRepo,
 		IdGenerator:    idGenerator,
 	}
-	shorteningSrv := shortening.New(shorteningCfg)
+	service := shortening.New(shorteningCfg)
 
-	handlers := NewHandlers(&cfg.Services.Shortening, shorteningSrv)
+	handlers := NewHandlers(service)
 
 	mux := web.NewMux(logger)
 	mux.Use(web.RequestId)
 	mux.Use(web.Logging)
 	mux.Use(web.Recover(cfg.Env))
+	mux.Use(web.Timeout(serviceCfg.DefaultTimeout))
 
-	mux.Post("/v1/shorten", handlers.Shorten)
+	mux.Post("/v1/shorten", handlers.shorten)
 
 	app := web.New(serviceCfg, logger)
 	app.Run(mux)
