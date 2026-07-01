@@ -47,7 +47,7 @@ type ServiceConfig struct {
 	ReadHeaderTimeout       time.Duration `koanf:"ReadHeaderTimeout" validate:"required,min=1s"`
 	ReadTimeout             time.Duration `koanf:"readTimeout" validate:"required,min=1s"`
 	WriteTimeout            time.Duration `koanf:"writeTimeout" validate:"required,min=1s"`
-	IdelTimeout             time.Duration `koanf:"idelTimeout" validate:"required,min=1s"`
+	IdleTimeout             time.Duration `koanf:"idleTimeout" validate:"required,min=1s"`
 	DefaultTimeout          time.Duration `koanf:"defaultTimeout" validate:"required,min=1s"`
 	GracefulShutdownTimeout time.Duration `koanf:"gracefulShutdownTimeout" validate:"required,min=1s"`
 	allowedOrigins          []string      `koanf:"allowedOrigins" validate:"required"`
@@ -182,8 +182,8 @@ func setServiceDefaults(cfg *ServiceConfig) {
 		cfg.WriteTimeout = time.Second
 	}
 
-	if cfg.IdelTimeout == 0 {
-		cfg.IdelTimeout = time.Minute
+	if cfg.IdleTimeout == 0 {
+		cfg.IdleTimeout = time.Minute
 	}
 
 	if cfg.DefaultTimeout == 0 {

@@ -85,7 +85,7 @@ func TestShorteningService_ShortenSucceedsForValidInput(t *testing.T) {
 
 func createRepo(t *testing.T) ports.URLMappingRepository {
 	t.Helper()
-	URLMappingRepo := urlmappingrepo.NewCassandra(testCtx.Cassandra.Session, testCtx.Keyspace, ports.NewCacheStub(), testCtx.Logger)
+	URLMappingRepo := urlmappingrepo.NewCassandra(testCtx.Cassandra.Session, testCtx.Keyspace, ports.NewCacheStub())
 	return URLMappingRepo
 }
 

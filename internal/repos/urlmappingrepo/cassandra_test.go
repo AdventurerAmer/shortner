@@ -110,6 +110,5 @@ func createRepo(t *testing.T) *cassandraRepo {
 		session:  testCtx.Cassandra.Session,
 		keyspace: testCtx.Keyspace,
 		cache:    ports.NewCacheStub(),
-		logger:   testCtx.Logger,
 	}
 }

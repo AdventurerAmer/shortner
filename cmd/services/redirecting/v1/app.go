@@ -3,6 +3,7 @@ package v1
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 
 	analyticsV1 "github.com/AdventurerAmer/shortner/cmd/services/analytics/v1"
@@ -22,7 +23,8 @@ func Run() int {
 		return 1
 	}
 
-	logger := logging.New(cfg)
+	serviceCfg := &cfg.Services.Redirecting
+	logger := logging.New(cfg).With(slog.String("service", serviceCfg.Name))
 
 	cassandra, err := infra.ConnectToCassandra(context.TODO(), &cfg.Infrastructure.Database)
 	if err != nil {
@@ -40,30 +42,28 @@ func Run() int {
 
 	redisCache := caches.NewRedis(redisCtx.Client)
 
-	app := web.New(cfg.Env, logger, &cfg.Services.Redirecting)
-
 	URLMappingRepo := urlmappingrepo.NewCassandra(
 		cassandra.Session,
 		cfg.Infrastructure.Database.Keyspace,
-		redisCache, logger)
+		redisCache)
 
 	redirectingCfg := redirecting.Config{
 		URLMappingRepo: URLMappingRepo,
 	}
-	redirecting := redirecting.New(logger, redirectingCfg)
+	redirecting := redirecting.New(redirectingCfg)
 
-	analyticsClient := analyticsV1.NewClient("http://localhost:3032") // TODO: hardcoding
-	handlers := NewHandlers(logger, &cfg.Services.Redirecting, redirecting, analyticsClient)
+	analyticsClient := analyticsV1.NewClient("http://localhost:3032") // TODO: hardcoding addresss
+	handlers := NewHandlers(&cfg.Services.Redirecting, redirecting, analyticsClient)
 
 	mux := web.NewMux(logger)
 
-	mux.Use(app.RequestId)
-	mux.Use(app.Logging)
-	mux.Use(app.Recover)
+	mux.Use(web.RequestId)
+	mux.Use(web.Logging)
+	mux.Use(web.Recover(cfg.Env))
 
-	mux.Get("/health", app.DefaultHealthHandler)
 	mux.Get("/v1/redirect/{alias}", handlers.Redirect)
 
+	app := web.New(serviceCfg, logger)
 	app.Run(mux)
 
 	return 0

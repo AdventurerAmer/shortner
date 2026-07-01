@@ -6,7 +6,6 @@ import (
 
 	"github.com/AdventurerAmer/shortner/errs"
 	"github.com/AdventurerAmer/shortner/internal/core/ports"
-	"github.com/AdventurerAmer/shortner/logging"
 	"github.com/AdventurerAmer/shortner/validation"
 )
 
@@ -16,10 +15,9 @@ type Config struct {
 
 type service struct {
 	Config
-	logger *logging.Logger
 }
 
-func New(logger *logging.Logger, cfg Config) ports.RedirectingService {
+func New(cfg Config) ports.RedirectingService {
 	return &service{
 		Config: cfg,
 	}

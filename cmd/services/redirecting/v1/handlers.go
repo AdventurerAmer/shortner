@@ -15,15 +15,13 @@ import (
 )
 
 type Handlers struct {
-	logger          *logging.Logger
 	cfg             *config.ServiceConfig
 	srv             ports.RedirectingService
 	analyticsClient *analyticsV1.Client
 }
 
-func NewHandlers(logger *logging.Logger, cfg *config.ServiceConfig, srv ports.RedirectingService, analyticsClient *analyticsV1.Client) *Handlers {
+func NewHandlers(cfg *config.ServiceConfig, srv ports.RedirectingService, analyticsClient *analyticsV1.Client) *Handlers {
 	return &Handlers{
-		logger:          logger,
 		cfg:             cfg,
 		srv:             srv,
 		analyticsClient: analyticsClient,
@@ -55,7 +53,8 @@ func (h *Handlers) Redirect(c *web.Context) (any, error) {
 		dctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
 		if err := h.analyticsClient.IncrementClicks(dctx, alias); err != nil {
-			h.logger.Error("failed to increment clicks", "error", err)
+			logger := logging.Get(ctx)
+			logger.Error("failed to increment clicks", "error", err)
 		}
 	}()
 

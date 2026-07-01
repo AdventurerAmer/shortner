@@ -3,12 +3,14 @@ package web
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"runtime/debug"
 	"time"
 
 	"github.com/AdventurerAmer/shortner/config"
 	"github.com/AdventurerAmer/shortner/errs"
+	"github.com/AdventurerAmer/shortner/logging"
 	"github.com/google/uuid"
 )
 
@@ -16,7 +18,7 @@ const RequestIdHeader = "X-Request-ID"
 
 type requestIdCtxKey struct{}
 
-func (app *App) RequestId(next http.HandlerFunc) http.HandlerFunc {
+func RequestId(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		requestId := r.Header.Get(RequestIdHeader)
 		if requestId == "" {
@@ -24,8 +26,11 @@ func (app *App) RequestId(next http.HandlerFunc) http.HandlerFunc {
 		}
 		w.Header().Set(RequestIdHeader, requestId)
 
-		ctx := context.WithValue(r.Context(), requestIdCtxKey{}, requestId)
-		next(w, r.WithContext(ctx))
+		rctx := context.WithValue(r.Context(), requestIdCtxKey{}, requestId)
+		logger := logging.Get(rctx).With(slog.String("correlation-id", requestId))
+		rctx = logging.Set(rctx, logger)
+
+		next(w, r.WithContext(rctx))
 	}
 }
 
@@ -33,29 +38,33 @@ func GetRequestId(ctx context.Context) string {
 	return ctx.Value(requestIdCtxKey{}).(string)
 }
 
-func (app *App) Recover(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		defer func() {
-			if r := recover(); r != nil {
-				err := fmt.Errorf("%+v", r)
+func Recover(env config.Env) func(next http.HandlerFunc) http.HandlerFunc {
+	return func(next http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			defer func() {
+				if rec := recover(); rec != nil {
+					logger := logging.Get(r.Context())
 
-				if app.Env == config.EnvProd {
-					app.Logger.Error("recovered from panic", "error", err)
-				} else {
-					stackTrace := string(debug.Stack())
-					app.Logger.Error("recovered from panic", "error", err, "stack-trace", stackTrace)
+					err := fmt.Errorf("%+v", rec)
+
+					if env == config.EnvProd {
+						logger.Error("recovered from panic", "error", err)
+					} else {
+						stackTrace := string(debug.Stack())
+						logger.Error("recovered from panic", "error", err, "stack-trace", stackTrace)
+					}
+					resp := errs.NewInternal(err)
+					status := errs.HTTPStatus(resp.Code)
+
+					w.WriteHeader(status)
+
+					if err := writeJSON(resp, w); err != nil {
+						logger.Error("failed to write resposne to client", "error", err)
+					}
 				}
-				resp := errs.NewInternal(err)
-				status := errs.HTTPStatus(resp.Code)
-
-				w.WriteHeader(status)
-
-				if err := writeJSON(resp, w); err != nil {
-					app.Logger.Error("failed to write resposne to client", "error", err)
-				}
-			}
-		}()
-		next(w, r)
+			}()
+			next(w, r)
+		}
 	}
 }
 
@@ -69,7 +78,7 @@ func (rw *responseWriterWrapper) WriteHeader(code int) {
 	rw.ResponseWriter.WriteHeader(code)
 }
 
-func (app *App) Logging(next http.HandlerFunc) http.HandlerFunc {
+func Logging(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 
@@ -80,13 +89,14 @@ func (app *App) Logging(next http.HandlerFunc) http.HandlerFunc {
 
 		next(wrappedWriter, r)
 
-		latency := fmt.Sprintf("%d ms", time.Since(start).Milliseconds())
-		app.Logger.Info(
+		latency := fmt.Sprintf("%dms", time.Since(start).Milliseconds())
+		logger := logging.Get(r.Context())
+		logger.Info(
 			"HTTP Request Processed",
-			"request-id", GetRequestId(r.Context()),
 			"method", r.Method,
 			"path", r.URL.Path,
-			"status", wrappedWriter.statusCode,
+			"status-code", wrappedWriter.statusCode,
+			"status", http.StatusText(wrappedWriter.statusCode),
 			"latency", latency,
 		)
 	}

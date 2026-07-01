@@ -17,11 +17,10 @@ type cassandraRepo struct {
 	session  *gocql.Session
 	keyspace string
 	cache    ports.Cache
-	logger   *logging.Logger
 }
 
-func NewCassandra(session *gocql.Session, keyspace string, cache ports.Cache, logger *logging.Logger) ports.URLMappingRepository {
-	return &cassandraRepo{session: session, keyspace: keyspace, cache: cache, logger: logger}
+func NewCassandra(session *gocql.Session, keyspace string, cache ports.Cache) ports.URLMappingRepository {
+	return &cassandraRepo{session: session, keyspace: keyspace, cache: cache}
 }
 
 func (repo *cassandraRepo) Create(ctx context.Context, m *domain.URLMapping) error {
@@ -72,7 +71,8 @@ func (repo *cassandraRepo) Get(ctx context.Context, alias string) (*domain.URLMa
 	if errs.IsNotFound(cacheErr) {
 		ttl := 10 * time.Minute // TODO: hardcoding TTL
 		if err := repo.cache.Put(ctx, alias, m, ttl); err != nil {
-			repo.logger.Error("failed to set cache entry", "key", alias, "error", err)
+			logger := logging.Get(ctx)
+			logger.Error("failed to set cache entry", "key", alias, "error", err)
 		}
 	}
 	return &m, nil

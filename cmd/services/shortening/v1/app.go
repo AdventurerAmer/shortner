@@ -3,6 +3,7 @@ package v1
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 
 	"github.com/AdventurerAmer/shortner/config"
@@ -22,7 +23,8 @@ func Run() int {
 		return 1
 	}
 
-	logger := logging.New(cfg)
+	serviceCfg := &cfg.Services.Shortening
+	logger := logging.New(cfg).With(slog.String("service", serviceCfg.Name))
 
 	cassandra, err := infra.ConnectToCassandra(context.TODO(), &cfg.Infrastructure.Database)
 	if err != nil {
@@ -31,12 +33,9 @@ func Run() int {
 	}
 	defer infra.CloseCassandra(context.TODO(), cassandra)
 
-	app := web.New(cfg.Env, logger, &cfg.Services.Shortening)
-
-	urlmappingRepo := urlmappingrepo.NewCassandra(cassandra.Session, cfg.Infrastructure.Database.Keyspace, ports.NewCacheStub(), logger)
+	urlmappingRepo := urlmappingrepo.NewCassandra(cassandra.Session, cfg.Infrastructure.Database.Keyspace, ports.NewCacheStub())
 
 	idGenerator := snowflake.New("sa")
-
 	shorteningCfg := shortening.Config{
 		ShortURLPrefix: "http://localhost:3031/v1/redirect/",
 		URLMappingRepo: urlmappingRepo,
@@ -47,14 +46,13 @@ func Run() int {
 	handlers := NewHandlers(&cfg.Services.Shortening, shorteningSrv)
 
 	mux := web.NewMux(logger)
+	mux.Use(web.RequestId)
+	mux.Use(web.Logging)
+	mux.Use(web.Recover(cfg.Env))
 
-	mux.Use(app.RequestId)
-	mux.Use(app.Logging)
-	mux.Use(app.Recover)
-
-	mux.Get("/health", app.DefaultHealthHandler)
 	mux.Post("/v1/shorten", handlers.Shorten)
 
+	app := web.New(serviceCfg, logger)
 	app.Run(mux)
 
 	return 0

@@ -1,6 +1,7 @@
 package logging
 
 import (
+	"context"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -10,6 +11,7 @@ import (
 )
 
 type Logger = slog.Logger
+type loggerCtxKey struct{}
 
 func New(cfg *config.Config) *Logger {
 	level := parseLevel(cfg.Observability.Logging.Level)
@@ -44,6 +46,17 @@ func New(cfg *config.Config) *Logger {
 	slog.SetDefault(logger)
 
 	return logger
+}
+
+func Set(ctx context.Context, logger *Logger) context.Context {
+	return context.WithValue(ctx, loggerCtxKey{}, logger)
+}
+
+func Get(ctx context.Context) *Logger {
+	if logger, ok := ctx.Value(loggerCtxKey{}).(*Logger); ok {
+		return logger
+	}
+	return slog.Default()
 }
 
 func parseLevel(level string) slog.Level {

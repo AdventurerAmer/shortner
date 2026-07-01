@@ -3,6 +3,7 @@ package v1
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 
 	"github.com/AdventurerAmer/shortner/config"
@@ -21,7 +22,8 @@ func Run() int {
 		return 1
 	}
 
-	logger := logging.New(cfg)
+	serviceCfg := &cfg.Services.Analytics
+	logger := logging.New(cfg).With(slog.String("service", serviceCfg.Name))
 
 	cassandra, err := infra.ConnectToCassandra(context.TODO(), &cfg.Infrastructure.Database)
 	if err != nil {
@@ -39,8 +41,6 @@ func Run() int {
 
 	redisCache := caches.NewRedis(redisCtx.Client)
 
-	app := web.New(cfg.Env, logger, &cfg.Services.Analytics)
-
 	AnalyticRepo := analyticrepo.NewCassandra(
 		cassandra.Session,
 		cfg.Infrastructure.Database.Keyspace,
@@ -49,19 +49,18 @@ func Run() int {
 	analyticsCfg := analytics.Config{
 		AnalyticRepo: AnalyticRepo,
 	}
-	srv := analytics.New(analyticsCfg)
-
-	handlers := NewHandlers(logger, &cfg.Services.Analytics, srv)
+	service := analytics.New(analyticsCfg)
 
 	mux := web.NewMux(logger)
 
-	mux.Use(app.RequestId)
-	mux.Use(app.Logging)
-	mux.Use(app.Recover)
+	mux.Use(web.RequestId)
+	mux.Use(web.Logging)
+	mux.Use(web.Recover(cfg.Env))
 
-	mux.Get("/health", app.DefaultHealthHandler)
+	handlers := newHandlers(service)
 	mux.Post("/v1/clicks/{alias}", handlers.Clicks)
 
+	app := web.New(serviceCfg, logger)
 	app.Run(mux)
 
 	return 0

@@ -33,7 +33,8 @@ func (mux *Mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	for _, m := range slices.Backward(mux.middlewares) {
 		serve = m(serve)
 	}
-	serve(w, r)
+	rctx := logging.Set(r.Context(), mux.logger)
+	serve(w, r.WithContext(rctx))
 }
 
 func (mux *Mux) Post(route string, handler Handler) {
@@ -58,6 +59,7 @@ func (mux *Mux) Use(m Middleware) {
 
 func (mux *Mux) composeHTTPHandlerFunc(handler Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		logger := logging.Get(r.Context())
 		c := &Context{
 			Request:        r,
 			ResponseWriter: w,
@@ -67,7 +69,7 @@ func (mux *Mux) composeHTTPHandlerFunc(handler Handler) http.HandlerFunc {
 			var expectedErr *errs.Error
 			if !errors.As(err, &expectedErr) {
 				expectedErr = errs.Wrap(err, errs.CodeInternal, "internal server error")
-				mux.logger.Error("internal server error", "error", err)
+				logger.Error("internal server error", "error", err)
 			}
 			status := errs.HTTPStatus(expectedErr.Code)
 			w.WriteHeader(status)
@@ -76,7 +78,7 @@ func (mux *Mux) composeHTTPHandlerFunc(handler Handler) http.HandlerFunc {
 		// We can have nil 'resp' in case of a (302) redirection for-example
 		if resp != nil {
 			if err := writeJSON(resp, w); err != nil {
-				mux.logger.Error("failed to write resposne to client", "error", err)
+				logger.Error("failed to write resposne to client", "error", err)
 			}
 		}
 	}

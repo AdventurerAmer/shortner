@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
 	"net/http"
 	"os/signal"
 	"syscall"
@@ -14,23 +13,21 @@ import (
 )
 
 type App struct {
-	Env    config.Env
-	Cfg    *config.ServiceConfig
-	Logger *logging.Logger
+	cfg    *config.ServiceConfig
+	logger *logging.Logger
 }
 
-func New(env config.Env, logger *logging.Logger, cfg *config.ServiceConfig) *App {
+func New(cfg *config.ServiceConfig, logger *logging.Logger) *App {
 	app := &App{
-		Env:    env,
-		Cfg:    cfg,
-		Logger: logger.With(slog.String("service", cfg.Name)),
+		cfg:    cfg,
+		logger: logger,
 	}
 	return app
 }
 
 func (app *App) Run(router http.Handler) {
-	cfg := app.Cfg
-	logger := app.Logger
+	cfg := app.cfg
+	logger := app.logger
 
 	srv := &http.Server{
 		Addr:              fmt.Sprintf(":%d", cfg.Port),
@@ -39,7 +36,7 @@ func (app *App) Run(router http.Handler) {
 		ReadHeaderTimeout: cfg.ReadHeaderTimeout,
 		ReadTimeout:       cfg.ReadTimeout,
 		WriteTimeout:      cfg.WriteTimeout,
-		IdleTimeout:       cfg.IdelTimeout,
+		IdleTimeout:       cfg.IdleTimeout,
 	}
 
 	errCh := make(chan error, 1)
@@ -58,7 +55,7 @@ func (app *App) Run(router http.Handler) {
 
 	select {
 	case err := <-errCh:
-		logger.Error("ListenAndServe failed", "error", err)
+		logger.Error("'ListenAndServe' failed", "error", err)
 	case <-sigCtx.Done():
 		logger.Info("graceful shutdown started")
 		defer logger.Info("graceful shutdown ended")
