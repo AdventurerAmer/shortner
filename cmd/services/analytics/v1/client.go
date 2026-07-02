@@ -16,7 +16,7 @@ func NewClient(address string) *Client {
 }
 
 func (c *Client) IncrementClicks(ctx context.Context, alias string) error {
-	endpoint := fmt.Sprintf("%s/v1/clicks/%s", c.Address, alias)
+	endpoint := fmt.Sprintf("%s/v1/analytics/%s/clicks", c.Address, alias)
 	r, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, nil)
 	if err != nil {
 		return fmt.Errorf("'http.NewRequestWithContext' failed: %w", err)

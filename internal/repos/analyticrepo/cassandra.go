@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/AdventurerAmer/shortner/errs"
 	"github.com/AdventurerAmer/shortner/internal/core/domain"
@@ -48,10 +47,10 @@ func (repo *cassandraRepo) Create(ctx context.Context, a *domain.Analytic) error
 
 func (repo *cassandraRepo) Get(ctx context.Context, alias string) (*domain.Analytic, error) {
 	a := domain.Analytic{Alias: alias}
-	cacheErr := repo.cache.Get(ctx, alias, &a)
-	if cacheErr == nil {
-		return &a, nil
-	}
+	// cacheErr := repo.cache.Get(ctx, alias, &a)
+	// if cacheErr == nil {
+	// 	return &a, nil
+	// }
 	stmt := fmt.Sprintf(
 		`SELECT created_at, updated_at, clicks, version 
 		 FROM %s.analytics
@@ -67,10 +66,10 @@ func (repo *cassandraRepo) Get(ctx context.Context, alias string) (*domain.Analy
 		}
 		return nil, fmt.Errorf("'ScanContext' failed: %w", err)
 	}
-	if errs.IsNotFound(cacheErr) {
-		ttl := 10 * time.Minute // TODO: hardcoding TTL
-		repo.cache.Put(ctx, alias, a, ttl)
-	}
+	// if errs.IsNotFound(cacheErr) {
+	// 	ttl := 10 * time.Minute // TODO: hardcoding TTL
+	// 	repo.cache.Put(ctx, alias, a, ttl)
+	// }
 	return &a, nil
 }
 

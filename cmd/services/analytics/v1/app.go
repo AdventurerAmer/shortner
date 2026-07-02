@@ -59,7 +59,9 @@ func Run() int {
 	mux.Use(web.Timeout(serviceCfg.DefaultTimeout))
 
 	handlers := newHandlers(service)
-	mux.Post("/v1/clicks/{alias}", handlers.clicks)
+
+	mux.Get("/v1/analytics/{alias}", handlers.get)
+	mux.Post("/v1/analytics/{alias}/clicks", handlers.clicks)
 
 	app := web.New(serviceCfg, logger)
 	app.Run(mux)
