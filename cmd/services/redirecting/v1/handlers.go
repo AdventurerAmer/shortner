@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/AdventurerAmer/shortner/async"
 	"github.com/AdventurerAmer/shortner/internal/core/ports"
@@ -45,12 +46,14 @@ func (h *handlers) redirect(c *web.Context) (any, error) {
 	http.Redirect(c.ResponseWriter, c.Request, resp.LongURL, http.StatusFound)
 
 	h.orch.Go(c.Ctx(), func(ctx context.Context) {
-		logger := logging.Get(ctx)
-		logger.Info("increment clicks 'async request'")
-
 		alias := req.Alias
-		if err := h.analyticsClient.IncrementClicks(ctx, alias); err != nil {
-			logger.Error("failed to increment clicks", "error", err)
+
+		dctx, cancel := context.WithTimeout(ctx, time.Second)
+		defer cancel()
+
+		if err := h.analyticsClient.IncrementClicks(dctx, alias); err != nil {
+			logger := logging.Get(dctx)
+			logger.Error("failed to increment clicks", "alias", alias, "error", err)
 		}
 	})
 

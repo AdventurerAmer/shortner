@@ -37,7 +37,8 @@ func Run() int {
 
 	idGenerator := snowflake.New("sa")
 	shorteningCfg := shortening.Config{
-		ShortURLPrefix: "http://localhost:3031/v1/redirect/",
+		// TODO: using http here
+		ShortURLPrefix: fmt.Sprintf("http://%s/", cfg.App.Domain),
 		URLMappingRepo: urlmappingRepo,
 		IdGenerator:    idGenerator,
 	}

@@ -53,7 +53,7 @@ func Run() int {
 	}
 	service := redirecting.New(redirectingCfg)
 
-	analyticsClient := analyticsV1.NewClient("http://localhost:3032") // TODO: hardcoding addresss
+	analyticsClient := analyticsV1.NewClient(cfg.Services.Analytics.Address())
 
 	orch := async.NewOrchestrator(context.Background())
 	defer orch.Shutdown()

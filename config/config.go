@@ -37,6 +37,7 @@ type Config struct {
 
 type AppConfig struct {
 	Name    string `koanf:"name" validate:"required,min=1,max=128"`
+	Domain  string `koanf:"domain" validate:"required,min=1"`
 	Version string `koanf:"version" validate:"required,semver"`
 }
 
@@ -51,6 +52,11 @@ type ServiceConfig struct {
 	DefaultTimeout          time.Duration `koanf:"defaultTimeout" validate:"required,min=1s"`
 	GracefulShutdownTimeout time.Duration `koanf:"gracefulShutdownTimeout" validate:"required,min=1s"`
 	allowedOrigins          []string      `koanf:"allowedOrigins" validate:"required"`
+}
+
+func (srv *ServiceConfig) Address() string {
+	// TODO: using http here
+	return fmt.Sprintf("http://localhost:%d", srv.Port)
 }
 
 type ServicesConfig struct {
