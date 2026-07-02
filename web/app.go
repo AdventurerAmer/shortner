@@ -39,6 +39,9 @@ func (app *App) Run(router http.Handler) {
 		IdleTimeout:       cfg.IdleTimeout,
 	}
 
+	sigCtx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer cancel()
+
 	errCh := make(chan error, 1)
 
 	go func() {
@@ -49,9 +52,6 @@ func (app *App) Run(router http.Handler) {
 			errCh <- err
 		}
 	}()
-
-	sigCtx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer cancel()
 
 	select {
 	case err := <-errCh:

@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 
+	"github.com/AdventurerAmer/shortner/async"
 	analyticsV1 "github.com/AdventurerAmer/shortner/cmd/services/analytics/v1"
 	"github.com/AdventurerAmer/shortner/config"
 	"github.com/AdventurerAmer/shortner/infra"
@@ -53,7 +54,11 @@ func Run() int {
 	service := redirecting.New(redirectingCfg)
 
 	analyticsClient := analyticsV1.NewClient("http://localhost:3032") // TODO: hardcoding addresss
-	handlers := newHandlers(service, analyticsClient)
+
+	orch := async.NewOrchestrator(context.Background())
+	defer orch.Shutdown()
+
+	handlers := newHandlers(service, analyticsClient, orch)
 
 	mux := web.NewMux(logger)
 

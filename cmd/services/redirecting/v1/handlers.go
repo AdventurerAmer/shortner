@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"time"
 
+	"github.com/AdventurerAmer/shortner/async"
 	"github.com/AdventurerAmer/shortner/internal/core/ports"
 	"github.com/AdventurerAmer/shortner/logging"
 	"github.com/AdventurerAmer/shortner/web"
@@ -16,12 +16,14 @@ import (
 type handlers struct {
 	service         ports.RedirectingService
 	analyticsClient *analyticsV1.Client
+	orch            *async.Orchestrator
 }
 
-func newHandlers(service ports.RedirectingService, analyticsClient *analyticsV1.Client) *handlers {
+func newHandlers(service ports.RedirectingService, analyticsClient *analyticsV1.Client, orch *async.Orchestrator) *handlers {
 	return &handlers{
 		service:         service,
 		analyticsClient: analyticsClient,
+		orch:            orch,
 	}
 }
 
@@ -42,15 +44,15 @@ func (h *handlers) redirect(c *web.Context) (any, error) {
 	// http.StatusFound represents a temporary (302) redirect
 	http.Redirect(c.ResponseWriter, c.Request, resp.LongURL, http.StatusFound)
 
-	go func() {
+	h.orch.Go(c.Ctx(), func(ctx context.Context) {
+		logger := logging.Get(ctx)
+		logger.Info("increment clicks 'async request'")
+
 		alias := req.Alias
-		dctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		defer cancel()
-		if err := h.analyticsClient.IncrementClicks(dctx, alias); err != nil {
-			logger := logging.Get(dctx)
+		if err := h.analyticsClient.IncrementClicks(ctx, alias); err != nil {
 			logger.Error("failed to increment clicks", "error", err)
 		}
-	}()
+	})
 
 	return nil, nil
 }
