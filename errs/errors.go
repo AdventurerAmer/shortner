@@ -36,6 +36,14 @@ func IsNotFound(err error) bool {
 	return false
 }
 
+func IsValidation(err error) bool {
+	var e *Error
+	if errors.As(err, &e) && e.Code == CodeValidation {
+		return true
+	}
+	return false
+}
+
 func IsAlreadyExists(err error) bool {
 	var e *Error
 	if errors.As(err, &e) && e.Code == CodeResourceAlreadyExists {

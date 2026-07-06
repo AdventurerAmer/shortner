@@ -5,6 +5,7 @@ go 1.25.0
 require (
 	github.com/ThreeDotsLabs/humanslog v0.1.0
 	github.com/apache/cassandra-gocql-driver/v2 v2.1.1
+	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/go-playground/validator/v10 v10.30.3
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
@@ -14,6 +15,7 @@ require (
 	github.com/knadh/koanf/providers/file v1.2.1
 	github.com/knadh/koanf/v2 v2.3.5
 	github.com/redis/go-redis/v9 v9.20.1
+	github.com/sony/gobreaker/v2 v2.4.0
 )
 
 require (

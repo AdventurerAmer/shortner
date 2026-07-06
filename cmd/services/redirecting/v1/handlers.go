@@ -7,11 +7,15 @@ import (
 	"time"
 
 	"github.com/AdventurerAmer/shortner/async"
+	"github.com/AdventurerAmer/shortner/errs"
 	"github.com/AdventurerAmer/shortner/internal/core/ports"
 	"github.com/AdventurerAmer/shortner/logging"
 	"github.com/AdventurerAmer/shortner/web"
 
 	analyticsV1 "github.com/AdventurerAmer/shortner/cmd/services/analytics/v1"
+
+	"github.com/avast/retry-go"
+	"github.com/sony/gobreaker/v2"
 )
 
 type handlers struct {
@@ -28,6 +32,19 @@ func newHandlers(service ports.RedirectingService, analyticsClient *analyticsV1.
 	}
 }
 
+var analyticsCB = gobreaker.NewCircuitBreaker[[]byte](gobreaker.Settings{
+	Name:        "analytics",
+	Timeout:     30 * time.Second, // Time in Open state before Half-Open
+	MaxRequests: 5,                // Requests allowed in Half-Open
+	Interval:    60 * time.Second, // Clear counts periodically in Closed
+	ReadyToTrip: func(counts gobreaker.Counts) bool {
+		return counts.ConsecutiveFailures > 5
+	},
+	IsSuccessful: func(err error) bool {
+		return err == nil
+	},
+})
+
 func (h *handlers) redirect(c *web.Context) (any, error) {
 	req := ports.RedirectRequest{
 		Alias: c.Request.PathValue("alias"),
@@ -35,27 +52,46 @@ func (h *handlers) redirect(c *web.Context) (any, error) {
 
 	resp, err := h.service.Redirect(c.Ctx(), req)
 	if err != nil {
-		// TODO: html templates for not-found and err
-		// if errs.IsNotFound(err) {
-		// } else {
-		// }
 		return nil, fmt.Errorf("'service.Redirect' failed: %w", err)
 	}
 
-	// http.StatusFound represents a temporary (302) redirect
-	http.Redirect(c.ResponseWriter, c.Request, resp.LongURL, http.StatusFound)
-
-	h.orch.Go(c.Ctx(), func(ctx context.Context) {
+	goFunc := func(ctx context.Context) {
 		alias := req.Alias
 
-		dctx, cancel := context.WithTimeout(ctx, time.Second)
-		defer cancel()
+		retryFunc := func() error {
 
-		if err := h.analyticsClient.IncrementClicks(dctx, alias); err != nil {
-			logger := logging.Get(dctx)
-			logger.Error("failed to increment clicks", "alias", alias, "error", err)
+			_, err := analyticsCB.Execute(func() ([]byte, error) {
+				dctx, cancel := context.WithTimeout(ctx, time.Second)
+				defer cancel()
+
+				if err := h.analyticsClient.IncrementClicks(dctx, alias); err != nil {
+					if errs.IsNotFound(err) || errs.IsValidation(err) {
+						return nil, nil
+					}
+					return nil, err
+				}
+				return nil, nil
+			})
+
+			return err
 		}
-	})
 
+		if err := retry.Do(
+			retryFunc,
+			retry.Attempts(10),
+			retry.Delay(300*time.Millisecond),
+			retry.MaxJitter(200*time.Millisecond),
+			retry.DelayType(retry.BackOffDelay),
+			retry.LastErrorOnly(true),
+			retry.Context(ctx),
+		); err != nil {
+			logger := logging.Get(ctx)
+			logger.Error("analytics increment clicks request failed", "error", err)
+		}
+	}
+	h.orch.Go(c.Ctx(), goFunc)
+
+	// http.StatusFound represents a temporary (302) redirect
+	http.Redirect(c.ResponseWriter, c.Request, resp.LongURL, http.StatusFound)
 	return nil, nil
 }
