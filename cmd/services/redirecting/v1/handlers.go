@@ -61,7 +61,8 @@ func (h *handlers) redirect(c *web.Context) (any, error) {
 		retryFunc := func() error {
 
 			_, err := analyticsCB.Execute(func() ([]byte, error) {
-				dctx, cancel := context.WithTimeout(ctx, time.Second)
+				// TODO: harcoding timeout here...
+				dctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 				defer cancel()
 
 				if err := h.analyticsClient.IncrementClicks(dctx, alias); err != nil {
@@ -70,6 +71,7 @@ func (h *handlers) redirect(c *web.Context) (any, error) {
 					}
 					return nil, err
 				}
+
 				return nil, nil
 			})
 
@@ -86,7 +88,7 @@ func (h *handlers) redirect(c *web.Context) (any, error) {
 			retry.Context(ctx),
 		); err != nil {
 			logger := logging.Get(ctx)
-			logger.Error("analytics increment clicks request failed", "error", err)
+			logger.Error("increment clicks failed", "alias", alias, "error", err)
 		}
 	}
 	h.orch.Go(c.Ctx(), goFunc)

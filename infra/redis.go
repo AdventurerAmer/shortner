@@ -10,11 +10,10 @@ import (
 
 func ConnectToRedis(ctx context.Context, cfg *config.RedisConfig) (config.Redis, error) {
 	opts := &redis.Options{
-		Addr: cfg.Address,
-		// TODO: ignoring cfg.Username, cfg.Password, cfg.Database
-		// Username: cfg.Username,
-		// Password: cfg.Password,
-		// DB:       cfg.Database,
+		Addr:     cfg.Address,
+		Username: cfg.Username,
+		Password: cfg.Password,
+		DB:       cfg.Database,
 	}
 	client := redis.NewClient(opts)
 	if _, err := client.Ping(ctx).Result(); err != nil {

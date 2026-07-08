@@ -42,7 +42,10 @@ services:
 
   redis:
     image: redis:8.6
-    restart: unless-stopped              
+    restart: unless-stopped
+    environment:
+      # disables the default user passwordless entry, sets custom user, gives permissions (~* all keys, +@all commands)
+      - REDIS_ARGS=--user default off --user admin on >admin ~* +@all
     ports:
       - "6379:6379"              
     volumes:
@@ -50,7 +53,10 @@ services:
   
   redis-analytics:
     image: redis:8.6
-    restart: unless-stopped              
+    restart: unless-stopped
+    environment:
+      # disables the default user passwordless entry, sets custom user, gives permissions (~* all keys, +@all commands)
+      - REDIS_ARGS=--user default off --user admin on >admin ~* +@all                
     ports:
       - "6380:6379"              
     volumes:

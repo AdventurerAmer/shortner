@@ -31,11 +31,14 @@ func (c *Client) IncrementClicks(ctx context.Context, alias string) error {
 		return fmt.Errorf("'client.Do' failed: %w", err)
 	}
 	defer resp.Body.Close()
+
 	body, _ := io.ReadAll(resp.Body)
+
 	if resp.StatusCode != http.StatusOK {
-		var expectedErr errs.Error
-		_ = json.Unmarshal(body, &expectedErr)
+		var expectedErr = &errs.Error{}
+		_ = json.Unmarshal(body, expectedErr)
 		return fmt.Errorf("request failed with status %q, (%d): %w", resp.Status, resp.StatusCode, expectedErr)
 	}
+
 	return nil
 }
