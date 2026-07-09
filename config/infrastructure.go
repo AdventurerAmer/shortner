@@ -10,6 +10,7 @@ type InfrastructureConfig struct {
 	Database       CassandraDatabaseConfig `koanf:"database"`
 	Redis          RedisConfig             `koanf:"redis"`
 	RedisAnalytics RedisConfig             `koanf:"redisAnalytics"`
+	Kafka          KafkaConfig             `koanf:"kafka"`
 }
 
 type CassandraDatabaseConfig struct {
@@ -28,4 +29,9 @@ type RedisConfig struct {
 
 type Redis struct {
 	Client *redis.Client
+}
+
+type KafkaConfig struct {
+	Host string `koanf:"host" validate:"required,hostname"`
+	Port int    `koanf:"port" validate:"required,min=1,max=65535"`
 }

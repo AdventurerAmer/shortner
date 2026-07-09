@@ -32,3 +32,7 @@ infrastructure:
     address: localhost:6380
     password: admin
     database: 1
+  
+  kafka:
+    host: localhost
+    port: 9092

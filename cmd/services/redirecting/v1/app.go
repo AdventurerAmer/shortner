@@ -48,6 +48,12 @@ func Run() int {
 		cfg.Infrastructure.Database.Keyspace,
 		redisCache)
 
+	topic := "analytics"
+	writer := infra.NewKafkaWriter(cfg.Infrastructure.Kafka, topic)
+	defer func() {
+		_ = writer.Close()
+	}()
+
 	redirectingCfg := redirecting.Config{
 		URLMappingRepo: URLMappingRepo,
 	}
