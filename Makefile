@@ -10,9 +10,9 @@ PHONY: analytics
 analytics:
 	@go run ./cmd/services/analytics
 
-PHONY: analytics-consumer
-analytics-consumer:
-	@go run ./cmd/consumers/analytics
+PHONY: clicks
+clicks:
+	@go run ./cmd/workers/clicks
 
 PHONY: up
 up:

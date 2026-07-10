@@ -22,9 +22,9 @@ type CassandraDatabaseConfig struct {
 
 type RedisConfig struct {
 	Address  string `koanf:"address" validate:"required,url"`
-	Username string `koanf:"username" validate:"omitempty,min=1"`
+	Username string `koanf:"username" validate:"required,min=1"`
 	Password string `koanf:"password" validate:"required,min=1"`
-	Database int    `koanf:"database" validate:"required,min=0"`
+	Database *int   `koanf:"database" validate:"required,gte=0"`
 }
 
 type Redis struct {

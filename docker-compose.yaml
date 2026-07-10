@@ -43,24 +43,22 @@ services:
   redis:
     image: redis:8.6
     restart: unless-stopped
-    environment:
-      # disables the default user passwordless entry, sets custom user, gives permissions (~* all keys, +@all commands)
-      - REDIS_ARGS=--user default off --user admin on >admin ~* +@all
+    command: ["redis-server", "--aclfile", "/etc/redis/users.acl"]
     ports:
       - "6379:6379"              
     volumes:
       - redis-data:/data
+      - ./users.acl:/etc/redis/users.acl
   
   redis-analytics:
     image: redis:8.6
     restart: unless-stopped
-    environment:
-      # disables the default user passwordless entry, sets custom user, gives permissions (~* all keys, +@all commands)
-      - REDIS_ARGS=--user default off --user admin on >admin ~* +@all                
+    command: ["redis-server", "--aclfile", "/etc/redis/users.acl"]            
     ports:
       - "6380:6379"              
     volumes:
       - redis-analytics-data:/data
+      - ./users.acl:/etc/redis/users.acl
     
   redis-insight:
     image: redis/redisinsight:3.2
@@ -72,6 +70,8 @@ services:
     depends_on:
       - redis
       - redis-analytics
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
   
   nginx-proxy:
     image: nginx:1.30.3

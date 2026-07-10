@@ -25,13 +25,15 @@ infrastructure:
 
   redis:
     address: localhost:6379
+    username: admin
     password: admin
-    database: 1
+    database: 0
   
   redisAnalytics:
     address: localhost:6380
+    username: admin
     password: admin
-    database: 1
+    database: 0
   
   kafka:
     host: localhost

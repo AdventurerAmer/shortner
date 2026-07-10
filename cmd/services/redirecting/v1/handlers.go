@@ -63,8 +63,7 @@ func (h *handlers) redirect(c *web.Context) (any, error) {
 		retryFunc := func() error {
 
 			_, err := analyticsCB.Execute(func() ([]byte, error) {
-				// TODO: harcoding timeout here...
-				dctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+				dctx, cancel := context.WithTimeout(ctx, domain.ClickEventTimeout)
 				defer cancel()
 
 				key := event.Alias
@@ -85,7 +84,7 @@ func (h *handlers) redirect(c *web.Context) (any, error) {
 
 			return err
 		}
-
+		
 		if err := retry.Do(
 			retryFunc,
 			retry.Attempts(10),

@@ -27,7 +27,7 @@ func NewKafkaReader(cfg config.KafkaConfig, topic domain.Topic, groupId string) 
 		Brokers:     []string{addr},
 		Topic:       string(topic),
 		GroupID:     groupId,
-		StartOffset: kafka.FirstOffset,
+		StartOffset: kafka.LastOffset,
 		MinBytes:    10 * 1024,        // 10KB
 		MaxBytes:    10 * 1024 * 1024, // 10MB
 	}

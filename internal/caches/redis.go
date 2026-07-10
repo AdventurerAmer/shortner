@@ -45,3 +45,10 @@ func (r *redisCache) Put(ctx context.Context, key string, v any, TTL time.Durati
 	}
 	return nil
 }
+
+func (r *redisCache) Inc(ctx context.Context, key string) error {
+	if _, err := r.client.Incr(ctx, key).Result(); err != nil {
+		return fmt.Errorf("'client.Incr' failed: %w", err)
+	}
+	return nil
+}

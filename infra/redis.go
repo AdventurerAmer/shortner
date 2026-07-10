@@ -9,11 +9,15 @@ import (
 )
 
 func ConnectToRedis(ctx context.Context, cfg *config.RedisConfig) (config.Redis, error) {
+	database := 0
+	if cfg.Database != nil {
+		database = *cfg.Database
+	}
 	opts := &redis.Options{
 		Addr:     cfg.Address,
 		Username: cfg.Username,
 		Password: cfg.Password,
-		DB:       cfg.Database,
+		DB:       database,
 	}
 	client := redis.NewClient(opts)
 	if _, err := client.Ping(ctx).Result(); err != nil {
