@@ -7,10 +7,11 @@ import (
 	"os"
 
 	"github.com/AdventurerAmer/shortner/async"
-	analyticsV1 "github.com/AdventurerAmer/shortner/cmd/services/analytics/v1"
 	"github.com/AdventurerAmer/shortner/config"
 	"github.com/AdventurerAmer/shortner/infra"
+	"github.com/AdventurerAmer/shortner/internal/brokers"
 	"github.com/AdventurerAmer/shortner/internal/caches"
+	"github.com/AdventurerAmer/shortner/internal/core/domain"
 	"github.com/AdventurerAmer/shortner/internal/core/services/redirecting"
 	"github.com/AdventurerAmer/shortner/internal/repos/urlmappingrepo"
 	"github.com/AdventurerAmer/shortner/logging"
@@ -48,23 +49,22 @@ func Run() int {
 		cfg.Infrastructure.Database.Keyspace,
 		redisCache)
 
-	topic := "analytics"
-	writer := infra.NewKafkaWriter(cfg.Infrastructure.Kafka, topic)
-	defer func() {
-		_ = writer.Close()
-	}()
-
 	redirectingCfg := redirecting.Config{
 		URLMappingRepo: URLMappingRepo,
 	}
 	service := redirecting.New(redirectingCfg)
 
-	analyticsClient := analyticsV1.NewClient(cfg.Services.Analytics.Address())
-
 	orch := async.NewOrchestrator(context.Background())
 	defer orch.Shutdown()
 
-	handlers := newHandlers(service, analyticsClient, orch)
+	writer := infra.NewKafkaWriter(cfg.Infrastructure.Kafka, domain.ClicksTopic)
+	defer func() {
+		_ = writer.Close()
+	}()
+
+	producer := brokers.NewKafkaProducer(writer)
+
+	handlers := newHandlers(service, producer, orch)
 
 	mux := web.NewMux(logger)
 

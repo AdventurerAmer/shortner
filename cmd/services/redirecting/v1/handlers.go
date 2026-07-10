@@ -2,33 +2,32 @@ package v1
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/AdventurerAmer/shortner/async"
-	"github.com/AdventurerAmer/shortner/errs"
+	"github.com/AdventurerAmer/shortner/internal/core/domain"
 	"github.com/AdventurerAmer/shortner/internal/core/ports"
 	"github.com/AdventurerAmer/shortner/logging"
 	"github.com/AdventurerAmer/shortner/web"
-
-	analyticsV1 "github.com/AdventurerAmer/shortner/cmd/services/analytics/v1"
 
 	"github.com/avast/retry-go"
 	"github.com/sony/gobreaker/v2"
 )
 
 type handlers struct {
-	service         ports.RedirectingService
-	analyticsClient *analyticsV1.Client
-	orch            *async.Orchestrator
+	service  ports.RedirectingService
+	producer ports.Producer
+	orch     *async.Orchestrator
 }
 
-func newHandlers(service ports.RedirectingService, analyticsClient *analyticsV1.Client, orch *async.Orchestrator) *handlers {
+func newHandlers(service ports.RedirectingService, producer ports.Producer, orch *async.Orchestrator) *handlers {
 	return &handlers{
-		service:         service,
-		analyticsClient: analyticsClient,
-		orch:            orch,
+		service:  service,
+		producer: producer,
+		orch:     orch,
 	}
 }
 
@@ -56,7 +55,10 @@ func (h *handlers) redirect(c *web.Context) (any, error) {
 	}
 
 	goFunc := func(ctx context.Context) {
-		alias := req.Alias
+		event := domain.ClickEvent{
+			Alias:     req.Alias,
+			Timestamp: time.Now().UTC(),
+		}
 
 		retryFunc := func() error {
 
@@ -65,12 +67,18 @@ func (h *handlers) redirect(c *web.Context) (any, error) {
 				dctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 				defer cancel()
 
-				if err := h.analyticsClient.IncrementClicks(dctx, alias); err != nil {
-					if errs.IsNotFound(err) || errs.IsValidation(err) {
-						return nil, nil
-					}
-					return nil, err
+				key := event.Alias
+				data, err := json.Marshal(&event)
+				if err != nil {
+					return nil, fmt.Errorf("'json.Marshal' failed: %w", err)
 				}
+
+				if err := h.producer.Send(dctx, key, data); err != nil {
+					return nil, fmt.Errorf("'producer.Send' failed: %w", err)
+				}
+
+				logger := logging.Get(ctx)
+				logger.Debug("sending clicks event succeeded", "event", event)
 
 				return nil, nil
 			})
@@ -88,7 +96,7 @@ func (h *handlers) redirect(c *web.Context) (any, error) {
 			retry.Context(ctx),
 		); err != nil {
 			logger := logging.Get(ctx)
-			logger.Error("increment clicks failed", "alias", alias, "error", err)
+			logger.Error("sending clicks event failed", "event", event, "error", err)
 		}
 	}
 	h.orch.Go(c.Ctx(), goFunc)

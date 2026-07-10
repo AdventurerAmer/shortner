@@ -10,6 +10,10 @@ PHONY: analytics
 analytics:
 	@go run ./cmd/services/analytics
 
+PHONY: analytics-consumer
+analytics-consumer:
+	@go run ./cmd/consumers/analytics
+
 PHONY: up
 up:
 	@docker-compose up --build
