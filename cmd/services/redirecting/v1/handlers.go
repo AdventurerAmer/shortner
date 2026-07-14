@@ -84,7 +84,7 @@ func (h *handlers) redirect(c *web.Context) (any, error) {
 
 			return err
 		}
-		
+
 		if err := retry.Do(
 			retryFunc,
 			retry.Attempts(10),
