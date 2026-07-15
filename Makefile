@@ -11,8 +11,12 @@ analytics:
 	@go run ./cmd/services/analytics
 
 PHONY: clickscollector
-clicks:
+clickscollector:
 	@go run ./cmd/workers/clickscollector
+
+PHONY: clicksbatcher
+clicksbatcher:
+	@go run ./cmd/workers/clicksbatcher
 
 PHONY: up
 up:

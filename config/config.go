@@ -25,8 +25,6 @@ const (
 	EnvProd    Env = "production"
 )
 
-var Envs = []Env{EnvLocal, EnvStaging, EnvProd}
-
 type Config struct {
 	Env            Env                  `koanf:"env" validate:"required,oneof=local staging production"`
 	App            AppConfig            `koanf:"app"`
