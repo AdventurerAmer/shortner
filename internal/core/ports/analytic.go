@@ -6,31 +6,20 @@ import (
 	"github.com/AdventurerAmer/shortner/internal/core/domain"
 )
 
-type AnalyticRepository interface {
-	Create(ctx context.Context, analytic *domain.Analytic) error
-	Get(ctx context.Context, alias string) (*domain.Analytic, error)
-	Update(ctx context.Context, analytic *domain.Analytic) error
+type AnalyticStatRepository interface {
+	Get(ctx context.Context, alias string) (*domain.AnalyticStat, error)
+	Put(ctx context.Context, id string, aliases []string, clicks []int) error
 	Delete(ctx context.Context, alias string) error
 }
 
 type AnalyticService interface {
-	Get(ctx context.Context, req GetAnalyticRequest) (GetAnalyticResponse, error)
-	IncrementClicks(ctx context.Context, req IncrementClicksRequest) (IncrementClicksResponse, error)
+	Get(ctx context.Context, req GetAnalyticStatRequest) (GetAnalyticStatResponse, error)
 }
 
-type GetAnalyticRequest struct {
+type GetAnalyticStatRequest struct {
 	Alias string `json:"alias" validate:"required,len=9"`
 }
 
-type GetAnalyticResponse struct {
-	Analytic *domain.Analytic `json:"analytic"`
-}
-
-type IncrementClicksRequest struct {
-	Alias  string `json:"alias" validate:"required,len=9"`
-	Clicks int    `json:"clicks" validate:"required,min=1"`
-}
-
-type IncrementClicksResponse struct {
-	Analytic *domain.Analytic `json:"analytic"`
+type GetAnalyticStatResponse struct {
+	AnalyticStat *domain.AnalyticStat `json:"analyticStat"`
 }

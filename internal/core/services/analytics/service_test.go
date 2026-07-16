@@ -9,11 +9,12 @@ import (
 	"github.com/AdventurerAmer/shortner/errs"
 	"github.com/AdventurerAmer/shortner/internal/core/domain"
 	"github.com/AdventurerAmer/shortner/internal/core/ports"
-	"github.com/AdventurerAmer/shortner/internal/repos/analyticrepo"
+	analyticrepo "github.com/AdventurerAmer/shortner/internal/repos/analyticstat"
 	"github.com/AdventurerAmer/shortner/snowflake"
 	"github.com/AdventurerAmer/shortner/test"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/google/uuid"
 )
 
 var testCtx *test.Cassandra
@@ -38,26 +39,25 @@ func TestAnalyticsService_GetSucceedsForValidInput(t *testing.T) {
 
 	shard := "sa"
 	idGenerator := snowflake.New(shard)
-	now := time.Now().UTC()
-	m := &domain.Analytic{
-		Alias:     idGenerator.Next(),
-		CreatedAt: now,
-		UpdatedAt: now,
-		Clicks:    0,
-		Version:   0,
+	stat := &domain.AnalyticStat{
+		Alias:  idGenerator.Next(),
+		Clicks: 10,
 	}
-	if err := repo.Create(ctx, m); err != nil {
-		t.Skipf("failed to create analytic: %+v", err)
+	patchId := uuid.NewString()
+	aliases := []string{stat.Alias}
+	clicks := []int{stat.Clicks}
+	if err := repo.Put(ctx, patchId, aliases, clicks); err != nil {
+		t.Skipf("failed to create analytic stat: %+v", err)
 	}
 
 	t.Cleanup(func() {
 		dctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
-		repo.Delete(dctx, m.Alias)
+		repo.Delete(dctx, stat.Alias)
 	})
 
-	req := ports.GetAnalyticRequest{
-		Alias: m.Alias,
+	req := ports.GetAnalyticStatRequest{
+		Alias: stat.Alias,
 	}
 	resp, err := service.Get(ctx, req)
 	if err != nil {
@@ -67,60 +67,14 @@ func TestAnalyticsService_GetSucceedsForValidInput(t *testing.T) {
 		t.Skipf("get analytic failed: %+v", err)
 	}
 
-	expected := m
-	got := resp.Analytic
+	expected := stat
+	got := resp.AnalyticStat
 	if !cmp.Equal(expected, got, cmpopts.EquateApproxTime(time.Second)) {
 		t.Errorf("expected %+v, got %+v, diff %+v", expected, got, cmp.Diff(expected, got))
 	}
 }
 
-func TestAnalyticsService_IncrementClicksSucceedsForValidInput(t *testing.T) {
-	repo := createRepo(t)
-	service := createService(t)
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-
-	shard := "sa"
-	idGenerator := snowflake.New(shard)
-	now := time.Now().UTC()
-	m := &domain.Analytic{
-		Alias:     idGenerator.Next(),
-		CreatedAt: now,
-		UpdatedAt: now,
-		Clicks:    0,
-		Version:   0,
-	}
-	if err := repo.Create(ctx, m); err != nil {
-		t.Skipf("failed to create analytic: %+v", err)
-	}
-
-	t.Cleanup(func() {
-		dctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		defer cancel()
-		repo.Delete(dctx, m.Alias)
-	})
-
-	req := ports.IncrementClicksRequest{
-		Alias:  m.Alias,
-		Clicks: 1,
-	}
-	resp, err := service.IncrementClicks(ctx, req)
-	if err != nil {
-		t.Fatalf("expected no error, got %+v", err)
-	}
-
-	m.Clicks += 1
-	m.Version += 1
-	expected := m
-	got := resp.Analytic
-
-	if !cmp.Equal(expected, got, cmpopts.EquateApproxTime(time.Second)) {
-		t.Errorf("expected %+v, got %+v, diff %+v", expected, got, cmp.Diff(expected, got))
-	}
-}
-
-func createRepo(t *testing.T) ports.AnalyticRepository {
+func createRepo(t *testing.T) ports.AnalyticStatRepository {
 	t.Helper()
 	AnalyticRepo := analyticrepo.NewCassandra(testCtx.Cassandra.Session, testCtx.Keyspace, ports.NewCacheStub())
 	return AnalyticRepo
@@ -130,7 +84,7 @@ func createService(t *testing.T) ports.AnalyticService {
 	t.Helper()
 	repo := createRepo(t)
 	cfg := Config{
-		AnalyticRepo: repo,
+		AnalyticStatRepo: repo,
 	}
 	return &service{
 		Config: cfg,

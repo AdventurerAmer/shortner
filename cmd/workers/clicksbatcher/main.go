@@ -6,11 +6,14 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"time"
 
 	"github.com/AdventurerAmer/shortner/config"
 	"github.com/AdventurerAmer/shortner/infra"
 	"github.com/AdventurerAmer/shortner/internal/brokers"
 	"github.com/AdventurerAmer/shortner/internal/core/domain"
+	"github.com/AdventurerAmer/shortner/internal/core/ports"
+	"github.com/AdventurerAmer/shortner/internal/repos/analyticstat"
 	"github.com/AdventurerAmer/shortner/logging"
 )
 
@@ -23,6 +26,18 @@ func main() {
 
 	groupId := "clicks-batcher"
 	logger := logging.New(cfg).With(slog.String("service", groupId))
+
+	cassandra, err := infra.ConnectToCassandra(context.TODO(), &cfg.Infrastructure.Database)
+	if err != nil {
+		logger.Error("cassandra connection failed", "error", err)
+		os.Exit(1)
+	}
+	defer infra.CloseCassandra(context.TODO(), cassandra)
+
+	analyticStatRepo := analyticstat.NewCassandra(
+		cassandra.Session,
+		cfg.Infrastructure.Database.Keyspace,
+		ports.NewCacheStub())
 
 	reader := infra.NewKafkaReader(cfg.Infrastructure.Kafka, domain.ClicksBatchTopic, groupId)
 	defer func() {
@@ -42,7 +57,15 @@ func main() {
 			logger.Error("'json.Unmarshal' failed", "key", key, "error", err)
 			return
 		}
-		slog.Info("processing batched clicks", "event", event)
+
+		// TODO: hardcoding timeout
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+
+		// TODO: we have need manual ack here...
+		if err := analyticStatRepo.Put(ctx, event.UUId, event.Aliases, event.Clicks); err != nil {
+			logger.Info("analyticStatRepo.Put failed", "error", err)
+		}
 	}
 	if err := consumer.Receive(context.Background(), h); err != nil {
 		slog.Info("'consumer.Receive' failed", "error", err)

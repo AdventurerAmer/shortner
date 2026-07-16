@@ -1,4 +1,4 @@
-package urlmappingrepo
+package urlmapping
 
 import (
 	"context"

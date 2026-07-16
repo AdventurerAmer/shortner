@@ -13,7 +13,7 @@ import (
 	"github.com/AdventurerAmer/shortner/internal/caches"
 	"github.com/AdventurerAmer/shortner/internal/core/domain"
 	"github.com/AdventurerAmer/shortner/internal/core/services/redirecting"
-	"github.com/AdventurerAmer/shortner/internal/repos/urlmappingrepo"
+	"github.com/AdventurerAmer/shortner/internal/repos/urlmapping"
 	"github.com/AdventurerAmer/shortner/logging"
 	"github.com/AdventurerAmer/shortner/web"
 )
@@ -44,7 +44,7 @@ func Run() int {
 
 	redisCache := caches.NewRedis(redisCtx.Client)
 
-	URLMappingRepo := urlmappingrepo.NewCassandra(
+	URLMappingRepo := urlmapping.NewCassandra(
 		cassandra.Session,
 		cfg.Infrastructure.Database.Keyspace,
 		redisCache)

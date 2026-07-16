@@ -10,7 +10,7 @@ import (
 	"github.com/AdventurerAmer/shortner/infra"
 	"github.com/AdventurerAmer/shortner/internal/caches"
 	"github.com/AdventurerAmer/shortner/internal/core/services/analytics"
-	"github.com/AdventurerAmer/shortner/internal/repos/analyticrepo"
+	"github.com/AdventurerAmer/shortner/internal/repos/analyticstat"
 	"github.com/AdventurerAmer/shortner/logging"
 	"github.com/AdventurerAmer/shortner/web"
 )
@@ -41,13 +41,13 @@ func Run() int {
 
 	redisCache := caches.NewRedis(redisCtx.Client)
 
-	AnalyticRepo := analyticrepo.NewCassandra(
+	analyticStatRepo := analyticstat.NewCassandra(
 		cassandra.Session,
 		cfg.Infrastructure.Database.Keyspace,
 		redisCache)
 
 	analyticsCfg := analytics.Config{
-		AnalyticRepo: AnalyticRepo,
+		AnalyticStatRepo: analyticStatRepo,
 	}
 	service := analytics.New(analyticsCfg)
 
@@ -61,7 +61,6 @@ func Run() int {
 	handlers := newHandlers(service)
 
 	mux.Get("/v1/analytics/{alias}", handlers.get)
-	mux.Post("/v1/analytics/{alias}/clicks", handlers.clicks)
 
 	app := web.New(serviceCfg, logger)
 	app.Run(mux)

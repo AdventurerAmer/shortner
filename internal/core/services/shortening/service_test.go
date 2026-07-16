@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/AdventurerAmer/shortner/internal/core/ports"
-	"github.com/AdventurerAmer/shortner/internal/repos/urlmappingrepo"
+	urlmappingrepo "github.com/AdventurerAmer/shortner/internal/repos/urlmapping"
 	"github.com/AdventurerAmer/shortner/snowflake"
 	"github.com/AdventurerAmer/shortner/test"
 	"github.com/google/go-cmp/cmp"

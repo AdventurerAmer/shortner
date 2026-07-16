@@ -8,7 +8,7 @@ import (
 
 	"github.com/AdventurerAmer/shortner/internal/core/domain"
 	"github.com/AdventurerAmer/shortner/internal/core/ports"
-	"github.com/AdventurerAmer/shortner/internal/repos/urlmappingrepo"
+	"github.com/AdventurerAmer/shortner/internal/repos/urlmapping"
 	"github.com/AdventurerAmer/shortner/snowflake"
 	"github.com/AdventurerAmer/shortner/test"
 	"github.com/google/go-cmp/cmp"
@@ -74,7 +74,7 @@ func TestRedirectingService_RedirectSucceedsForValidInput(t *testing.T) {
 
 func createRepo(t *testing.T) ports.URLMappingRepository {
 	t.Helper()
-	URLMappingRepo := urlmappingrepo.NewCassandra(testCtx.Cassandra.Session, testCtx.Keyspace, ports.NewCacheStub())
+	URLMappingRepo := urlmapping.NewCassandra(testCtx.Cassandra.Session, testCtx.Keyspace, ports.NewCacheStub())
 	return URLMappingRepo
 }
 

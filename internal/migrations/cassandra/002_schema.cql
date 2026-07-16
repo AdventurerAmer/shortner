@@ -8,12 +8,12 @@ CREATE KEYSPACE IF NOT EXISTS shortner
 
 USE shortner;
 
-CREATE TABLE IF NOT EXISTS analytics (
-  alias text PRIMARY KEY,
-  created_at TIMESTAMP,
-  updated_at TIMESTAMP,
-  clicks bigint,
-  version bigint
+CREATE TABLE IF NOT EXISTS analytic_stats (
+  alias TEXT PRIMARY KEY,
+  clicks COUNTER
 );
 
-CREATE INDEX IF NOT EXISTS ON analytics (created_at);
+CREATE TABLE analytic_stats_batches (
+    batch_id TEXT PRIMARY KEY,
+    applied_at TIMESTAMP
+);
