@@ -64,7 +64,7 @@ func main() {
 
 		// TODO: we have need manual ack here...
 		if err := analyticStatRepo.Put(ctx, event.UUId, event.Aliases, event.Clicks); err != nil {
-			logger.Info("analyticStatRepo.Put failed", "error", err)
+			logger.Error("analyticStatRepo.Put failed", "error", err)
 		}
 	}
 	if err := consumer.Receive(context.Background(), h); err != nil {

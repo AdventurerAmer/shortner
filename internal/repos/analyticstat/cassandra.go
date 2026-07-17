@@ -41,7 +41,7 @@ func (repo *cassandraRepo) Get(ctx context.Context, alias string) (*domain.Analy
 		case errors.Is(err, gocql.ErrNotFound):
 			return nil, errs.NewNotFound(err, "url mapping is not found")
 		}
-		return nil, fmt.Errorf("'ScanContext' failed: %w", err)
+		return nil, fmt.Errorf("'query.ScanContext' failed: %w", err)
 	}
 	if errs.IsNotFound(cacheErr) {
 		ttl := 1 * time.Second // TODO: hardcoding TTL
@@ -51,23 +51,23 @@ func (repo *cassandraRepo) Get(ctx context.Context, alias string) (*domain.Analy
 }
 
 func (repo *cassandraRepo) Put(ctx context.Context, id string, aliases []string, clicks []int) error {
-	insertStmt := fmt.Sprintf(`
-		INSERT INTO %s.analytic_stats_batches (batch_id, applied_at)
-		VALUES (?, ?) IF NOT EXISTS
-	`, repo.keyspace)
+	// insertStmt := fmt.Sprintf(`
+	// 	INSERT INTO %s.analytic_stats_batches (batch_id, applied_at)
+	// 	VALUES (?, ?) IF NOT EXISTS
+	// `, repo.keyspace)
+	// batch.Query(stmt, id, time.Now().UTC())
 
-	updateStmt := fmt.Sprintf(
+	stmt := fmt.Sprintf(
 		`UPDATE %s.analytic_stats
-		 SET clicks = clicks + ?,
+		 SET clicks = clicks + ?
 		 WHERE alias = ?`, repo.keyspace)
 
-	batch := repo.session.Batch(gocql.LoggedBatch)
-	batch.Query(insertStmt, id, time.Now().UTC())
+	batch := repo.session.Batch(gocql.CounterBatch)
 	for i := range len(aliases) {
-		batch.Query(updateStmt, clicks[i], aliases[i])
+		batch.Query(stmt, clicks[i], aliases[i])
 	}
-	_, _, err := batch.MapExecCASContext(ctx, nil)
-	if err != nil {
+
+	if err := batch.ExecContext(ctx); err != nil {
 		var (
 			readTimeout  gocql.RequestErrReadTimeout
 			writeTimeout gocql.RequestErrWriteTimeout
@@ -75,9 +75,8 @@ func (repo *cassandraRepo) Put(ctx context.Context, id string, aliases []string,
 		switch {
 		case errors.As(err, &readTimeout), errors.As(err, &writeTimeout):
 			return errs.NewTimeout(err)
-		case errors.Is(err, gocql.ErrNotFound):
-			return errs.NewNotFound(err, "analytic is not found")
 		}
+		return fmt.Errorf("'batch.ExecContext' failed: %w", err)
 	}
 	return nil
 }
