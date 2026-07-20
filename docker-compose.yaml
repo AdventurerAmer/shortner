@@ -1,4 +1,3 @@
-version: '3.8'
 name: "shortner"
 
 services:
@@ -39,6 +38,25 @@ services:
         echo 'Init complete.'
       "
     restart: on-failure
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:25.8
+    restart: unless-stopped
+    ports:
+      - "8123:8123"   # HTTP
+      - "9000:9000"   # Native
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+      - clickhouse_logs:/var/log/clickhouse-server
+    environment:
+      - CLICKHOUSE_DB=default
+      - CLICKHOUSE_USER=admin
+      - CLICKHOUSE_PASSWORD=admin
+      - CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
 
   redis:
     image: redis:8.6
@@ -110,6 +128,8 @@ services:
 
 volumes:
   cassandra_data:
+  clickhouse_data:
+  clickhouse_logs:
   redis-data:
   redis-analytics-data:
   redis-insight-data:

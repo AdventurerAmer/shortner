@@ -1,4 +1,4 @@
-package analyticstat
+package analyticclicks
 
 import (
 	"context"
@@ -37,11 +37,11 @@ func TestCassandraAnalyticRepo_GetSucceedsForValidInput(t *testing.T) {
 
 	idGen := snowflake.New("sa")
 
-	expected := &domain.AnalyticStat{
+	expected := &domain.AnalyticClicks{
 		Alias:  idGen.Next(),
 		Clicks: 10,
 	}
-	patchId := uuid.NewString()
+	patchId := []string{uuid.NewString()}
 	aliases := []string{expected.Alias}
 	clicks := []int{expected.Clicks}
 	if err := repo.Put(ctx, patchId, aliases, clicks); err != nil {
@@ -75,13 +75,14 @@ func TestCassandraAnalyticRepo_PutSucceedsForValidInput(t *testing.T) {
 
 	idGen := snowflake.New("sa")
 
-	expected := &domain.AnalyticStat{
+	expected := &domain.AnalyticClicks{
 		Alias:  idGen.Next(),
 		Clicks: 10,
 	}
+	ids := []string{uuid.NewString()}
 	aliases := []string{expected.Alias}
 	clicks := []int{expected.Clicks}
-	if err := repo.Put(ctx, uuid.NewString(), aliases, clicks); err != nil {
+	if err := repo.Put(ctx, ids, aliases, clicks); err != nil {
 		t.Skip()
 	}
 
@@ -92,7 +93,7 @@ func TestCassandraAnalyticRepo_PutSucceedsForValidInput(t *testing.T) {
 	})
 
 	expected.Clicks += 10
-	if err := repo.Put(ctx, uuid.NewString(), aliases, clicks); err != nil {
+	if err := repo.Put(ctx, ids, aliases, clicks); err != nil {
 		t.Skip()
 	}
 
@@ -116,14 +117,14 @@ func TestCassandraAnalyticRepo_DeleteSucceedsForValidInput(t *testing.T) {
 	defer cancel()
 
 	idGen := snowflake.New("sa")
-	expected := &domain.AnalyticStat{
+	expected := &domain.AnalyticClicks{
 		Alias:  idGen.Next(),
 		Clicks: 10,
 	}
-	patchId := uuid.NewString()
+	ids := []string{uuid.NewString()}
 	aliases := []string{expected.Alias}
 	clicks := []int{expected.Clicks}
-	if err := repo.Put(ctx, patchId, aliases, clicks); err != nil {
+	if err := repo.Put(ctx, ids, aliases, clicks); err != nil {
 		t.Skip()
 	}
 

@@ -17,12 +17,19 @@ services:
     port: 3032
   
 infrastructure:
-  database:
+  cassandra:
     host: localhost
     port: 9042
     keyspace: shortner
     connTimeout: 1s
-
+  
+  clickhouse:
+    host: localhost
+    port: 9042
+    database: default
+    username: admin
+    password: admin
+  
   redis:
     address: localhost:6379
     username: admin

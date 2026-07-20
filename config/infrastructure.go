@@ -7,17 +7,26 @@ import (
 )
 
 type InfrastructureConfig struct {
-	Database       CassandraDatabaseConfig `koanf:"database"`
-	Redis          RedisConfig             `koanf:"redis"`
-	RedisAnalytics RedisConfig             `koanf:"redisAnalytics"`
-	Kafka          KafkaConfig             `koanf:"kafka"`
+	Cassandra      CassandraConfig  `koanf:"cassandra"`
+	ClickHouse     ClickHouseConfig `koanf:"clickhouse"`
+	Redis          RedisConfig      `koanf:"redis"`
+	RedisAnalytics RedisConfig      `koanf:"redisAnalytics"`
+	Kafka          KafkaConfig      `koanf:"kafka"`
 }
 
-type CassandraDatabaseConfig struct {
+type CassandraConfig struct {
 	Host        string        `koanf:"host" validate:"required,hostname"`
 	Port        int           `koanf:"port" validate:"required,min=1,max=65535"`
 	Keyspace    string        `koanf:"keyspace" validate:"required,min=1"`
 	ConnTimeout time.Duration `koanf:"connTimeout" validate:"required,min=1s"`
+}
+
+type ClickHouseConfig struct {
+	Host     string `koanf:"host" validate:"required,hostname"`
+	Port     int    `koanf:"port" validate:"required,min=1,max=65535"`
+	Database string `koanf:"database" validate:"required,min=1"`
+	Username string `koanf:"username" validate:"required,min=1"`
+	Password string `koanf:"password" validate:"required,min=1"`
 }
 
 type RedisConfig struct {

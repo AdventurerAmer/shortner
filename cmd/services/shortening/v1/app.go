@@ -26,14 +26,14 @@ func Run() int {
 	serviceCfg := &cfg.Services.Shortening
 	logger := logging.New(cfg).With(slog.String("service", serviceCfg.Name))
 
-	cassandra, err := infra.ConnectToCassandra(context.TODO(), &cfg.Infrastructure.Database)
+	cassandra, err := infra.ConnectToCassandra(context.TODO(), &cfg.Infrastructure.Cassandra)
 	if err != nil {
 		logger.Error("cassandra connection failed", "error", err)
 		return 1
 	}
 	defer infra.CloseCassandra(context.TODO(), cassandra)
 
-	urlmappingRepo := urlmapping.NewCassandra(cassandra.Session, cfg.Infrastructure.Database.Keyspace, ports.NewCacheStub())
+	urlmappingRepo := urlmapping.NewCassandra(cassandra.Session, cfg.Infrastructure.Cassandra.Keyspace, ports.NewCacheStub())
 
 	idGenerator := snowflake.New("sa")
 	shorteningCfg := shortening.Config{

@@ -31,7 +31,7 @@ func NewCassandraTestContext() (*Cassandra, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	cassandra, err := infra.ConnectToCassandra(ctx, &cfg.Infrastructure.Database)
+	cassandra, err := infra.ConnectToCassandra(ctx, &cfg.Infrastructure.Cassandra)
 	if err != nil {
 		return nil, fmt.Errorf("'infra.ConnectToCassandra' failed: %w", err)
 	}
@@ -39,7 +39,7 @@ func NewCassandraTestContext() (*Cassandra, error) {
 	return &Cassandra{
 		Logger:    logger,
 		Cassandra: cassandra,
-		Keyspace:  cfg.Infrastructure.Database.Keyspace,
+		Keyspace:  cfg.Infrastructure.Cassandra.Keyspace,
 	}, nil
 }
 

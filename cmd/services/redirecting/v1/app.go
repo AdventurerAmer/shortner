@@ -28,7 +28,7 @@ func Run() int {
 	serviceCfg := &cfg.Services.Redirecting
 	logger := logging.New(cfg).With(slog.String("service", serviceCfg.Name))
 
-	cassandra, err := infra.ConnectToCassandra(context.TODO(), &cfg.Infrastructure.Database)
+	cassandra, err := infra.ConnectToCassandra(context.TODO(), &cfg.Infrastructure.Cassandra)
 	if err != nil {
 		logger.Error("cassandra connection failed", "error", err)
 		return 1
@@ -46,7 +46,7 @@ func Run() int {
 
 	URLMappingRepo := urlmapping.NewCassandra(
 		cassandra.Session,
-		cfg.Infrastructure.Database.Keyspace,
+		cfg.Infrastructure.Cassandra.Keyspace,
 		redisCache)
 
 	redirectingCfg := redirecting.Config{

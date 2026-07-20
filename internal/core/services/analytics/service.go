@@ -10,7 +10,7 @@ import (
 )
 
 type Config struct {
-	AnalyticStatRepo ports.AnalyticStatRepository
+	AnalyticStatRepo ports.AnalyticClicksRepository
 }
 
 type service struct {

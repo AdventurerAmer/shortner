@@ -9,7 +9,7 @@ import (
 	"github.com/AdventurerAmer/shortner/errs"
 	"github.com/AdventurerAmer/shortner/internal/core/domain"
 	"github.com/AdventurerAmer/shortner/internal/core/ports"
-	analyticrepo "github.com/AdventurerAmer/shortner/internal/repos/analyticstat"
+	"github.com/AdventurerAmer/shortner/internal/repos/analyticclicks"
 	"github.com/AdventurerAmer/shortner/snowflake"
 	"github.com/AdventurerAmer/shortner/test"
 	"github.com/google/go-cmp/cmp"
@@ -39,11 +39,11 @@ func TestAnalyticsService_GetSucceedsForValidInput(t *testing.T) {
 
 	shard := "sa"
 	idGenerator := snowflake.New(shard)
-	stat := &domain.AnalyticStat{
+	stat := &domain.AnalyticClicks{
 		Alias:  idGenerator.Next(),
 		Clicks: 10,
 	}
-	patchId := uuid.NewString()
+	patchId := []string{uuid.NewString()}
 	aliases := []string{stat.Alias}
 	clicks := []int{stat.Clicks}
 	if err := repo.Put(ctx, patchId, aliases, clicks); err != nil {
@@ -74,9 +74,9 @@ func TestAnalyticsService_GetSucceedsForValidInput(t *testing.T) {
 	}
 }
 
-func createRepo(t *testing.T) ports.AnalyticStatRepository {
+func createRepo(t *testing.T) ports.AnalyticClicksRepository {
 	t.Helper()
-	AnalyticRepo := analyticrepo.NewCassandra(testCtx.Cassandra.Session, testCtx.Keyspace, ports.NewCacheStub())
+	AnalyticRepo := analyticclicks.NewCassandra(testCtx.Cassandra.Session, testCtx.Keyspace, ports.NewCacheStub())
 	return AnalyticRepo
 }
 

@@ -10,9 +10,9 @@ PHONY: analytics
 analytics:
 	@go run ./cmd/services/analytics
 
-PHONY: clickscollector
-clickscollector:
-	@go run ./cmd/workers/clickscollector
+PHONY: clicks
+clicks:
+	@go run ./cmd/workers/clicks
 
 PHONY: clicksbatcher
 clicksbatcher:

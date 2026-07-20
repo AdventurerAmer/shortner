@@ -10,7 +10,7 @@ import (
 	"github.com/AdventurerAmer/shortner/infra"
 	"github.com/AdventurerAmer/shortner/internal/caches"
 	"github.com/AdventurerAmer/shortner/internal/core/services/analytics"
-	"github.com/AdventurerAmer/shortner/internal/repos/analyticstat"
+	"github.com/AdventurerAmer/shortner/internal/repos/analyticclicks"
 	"github.com/AdventurerAmer/shortner/logging"
 	"github.com/AdventurerAmer/shortner/web"
 )
@@ -25,7 +25,7 @@ func Run() int {
 	serviceCfg := &cfg.Services.Analytics
 	logger := logging.New(cfg).With(slog.String("service", serviceCfg.Name))
 
-	cassandra, err := infra.ConnectToCassandra(context.TODO(), &cfg.Infrastructure.Database)
+	cassandra, err := infra.ConnectToCassandra(context.TODO(), &cfg.Infrastructure.Cassandra)
 	if err != nil {
 		logger.Error("cassandra connection failed", "error", err)
 		return 1
@@ -41,13 +41,13 @@ func Run() int {
 
 	redisCache := caches.NewRedis(redisCtx.Client)
 
-	analyticStatRepo := analyticstat.NewCassandra(
+	analyticClicksRepo := analyticclicks.NewCassandra(
 		cassandra.Session,
-		cfg.Infrastructure.Database.Keyspace,
+		cfg.Infrastructure.Cassandra.Keyspace,
 		redisCache)
 
 	analyticsCfg := analytics.Config{
-		AnalyticStatRepo: analyticStatRepo,
+		AnalyticStatRepo: analyticClicksRepo,
 	}
 	service := analytics.New(analyticsCfg)
 

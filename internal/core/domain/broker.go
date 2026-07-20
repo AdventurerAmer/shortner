@@ -19,7 +19,7 @@ type ClickEvent struct {
 const ClicksBatchEventTimeout = 2 * time.Second
 
 type ClicksBatchEvent struct {
-	UUId    string   `json:"uuid"`
+	UUIds   []string `json:"uuid"`
 	Aliases []string `json:"aliases"`
 	Clicks  []int    `json:"clicks"`
 }

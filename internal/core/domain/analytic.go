@@ -1,6 +1,6 @@
 package domain
 
-type AnalyticStat struct {
+type AnalyticClicks struct {
 	Alias  string `json:"alias"`
 	Clicks int    `json:"clicks"`
 }

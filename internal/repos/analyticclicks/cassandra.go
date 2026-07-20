@@ -1,4 +1,4 @@
-package analyticstat
+package analyticclicks
 
 import (
 	"context"
@@ -18,19 +18,19 @@ type cassandraRepo struct {
 	cache    ports.Cache
 }
 
-func NewCassandra(session *gocql.Session, keyspace string, cache ports.Cache) ports.AnalyticStatRepository {
+func NewCassandra(session *gocql.Session, keyspace string, cache ports.Cache) ports.AnalyticClicksRepository {
 	return &cassandraRepo{session: session, keyspace: keyspace, cache: cache}
 }
 
-func (repo *cassandraRepo) Get(ctx context.Context, alias string) (*domain.AnalyticStat, error) {
-	stat := domain.AnalyticStat{Alias: alias}
+func (repo *cassandraRepo) Get(ctx context.Context, alias string) (*domain.AnalyticClicks, error) {
+	stat := domain.AnalyticClicks{Alias: alias}
 	cacheErr := repo.cache.Get(ctx, alias, &stat)
 	if cacheErr == nil {
 		return &stat, nil
 	}
 	stmt := fmt.Sprintf(
 		`SELECT clicks 
-		 FROM %s.analytic_stats
+		 FROM %s.analytic_clicks
 		 WHERE alias = ?`, repo.keyspace)
 	query := repo.session.Query(stmt, alias).Consistency(gocql.One)
 	if err := query.ScanContext(ctx, &stat.Clicks); err != nil {
@@ -50,31 +50,38 @@ func (repo *cassandraRepo) Get(ctx context.Context, alias string) (*domain.Analy
 	return &stat, nil
 }
 
-func (repo *cassandraRepo) Put(ctx context.Context, id string, aliases []string, clicks []int) error {
-	// insertStmt := fmt.Sprintf(`
-	// 	INSERT INTO %s.analytic_stats_batches (batch_id, applied_at)
-	// 	VALUES (?, ?) IF NOT EXISTS
-	// `, repo.keyspace)
-	// batch.Query(stmt, id, time.Now().UTC())
+func (repo *cassandraRepo) Put(ctx context.Context, ids []string, aliases []string, clicks []int) error {
+	batch := repo.session.Batch(gocql.LoggedBatch)
 
-	stmt := fmt.Sprintf(
-		`UPDATE %s.analytic_stats
+	insertStmt := fmt.Sprintf(`
+		INSERT INTO 
+		%s.analytic_click_batches (id, alias, clicks, applied_at)
+		VALUES (?, ?, ?, ?)
+	`, repo.keyspace)
+	now := time.Now().UTC()
+	for i := range len(aliases) {
+		batch.Query(insertStmt, ids[i], aliases[i], clicks[i], now)
+	}
+
+	updateStmt := fmt.Sprintf(
+		`UPDATE %s.analytic_clicks
 		 SET clicks = clicks + ?
 		 WHERE alias = ?`, repo.keyspace)
-
-	batch := repo.session.Batch(gocql.CounterBatch)
 	for i := range len(aliases) {
-		batch.Query(stmt, clicks[i], aliases[i])
+		batch.Query(updateStmt, clicks[i], aliases[i])
 	}
 
 	if err := batch.ExecContext(ctx); err != nil {
 		var (
-			readTimeout  gocql.RequestErrReadTimeout
-			writeTimeout gocql.RequestErrWriteTimeout
+			readTimeout   gocql.RequestErrReadTimeout
+			writeTimeout  gocql.RequestErrWriteTimeout
+			alreadyExists gocql.RequestErrAlreadyExists
 		)
 		switch {
 		case errors.As(err, &readTimeout), errors.As(err, &writeTimeout):
 			return errs.NewTimeout(err)
+		case errors.As(err, &alreadyExists):
+			return errs.NewAlreadyExists(err, "clicks batch already exists")
 		}
 		return fmt.Errorf("'batch.ExecContext' failed: %w", err)
 	}
@@ -84,7 +91,7 @@ func (repo *cassandraRepo) Put(ctx context.Context, id string, aliases []string,
 func (repo *cassandraRepo) Delete(ctx context.Context, alias string) error {
 	stmt := fmt.Sprintf(
 		`DELETE FROM 
-		%s.analytic_stats 
+		%s.analytic_clicks 
 		WHERE alias = ?`, repo.keyspace)
 
 	query := repo.session.Query(stmt, alias)
@@ -99,7 +106,7 @@ func (repo *cassandraRepo) Delete(ctx context.Context, alias string) error {
 		case errors.Is(err, gocql.ErrNotFound):
 			return errs.NewNotFound(err, "analytic is not found")
 		}
-		return fmt.Errorf("'ExecContext' failed: %w", err)
+		return fmt.Errorf("'query.ExecContext' failed: %w", err)
 	}
 	return nil
 }

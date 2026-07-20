@@ -107,7 +107,7 @@ func Load() (*Config, error) {
 
 	setDefaults(&cfg)
 
-	if err := validator.New().Struct(cfg); err != nil {
+	if err := validator.New(validator.WithRequiredStructEnabled()).Struct(cfg); err != nil {
 		return nil, fmt.Errorf("failed to validate config: %w", err)
 	}
 

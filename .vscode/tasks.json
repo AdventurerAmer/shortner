@@ -1,0 +1,77 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Run Shortening",
+            "type": "shell",
+            "command": "make shortening",
+            "group": "none",
+			 "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            }
+        },
+		{
+            "label": "Run Redirecting",
+            "type": "shell",
+            "command": "make redirecting",
+            "group": "none",
+			 "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            }
+        },
+		{
+            "label": "Run Analytics",
+            "type": "shell",
+            "command": "make analytics",
+            "group": "none",
+			 "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            }
+        },
+		{
+            "label": "Run Clicks",
+            "type": "shell",
+            "command": "make clicks",
+            "group": "none",
+			 "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            }
+        },
+		{
+            "label": "Run Clicks Batcher",
+            "type": "shell",
+            "command": "make clicksbatcher",
+            "group": "none",
+			 "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            }
+        },
+        {
+            "label": "Run Shortner Stack",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false
+            },
+            "dependsOn": [
+                "Run Shortening",
+				"Run Redirecting",
+				"Run Analytics",
+				"Run Clicks",
+				"Run Clicks Batcher"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        }
+    ]
+}

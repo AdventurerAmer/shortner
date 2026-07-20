@@ -6,9 +6,9 @@ import (
 	"github.com/AdventurerAmer/shortner/internal/core/domain"
 )
 
-type AnalyticStatRepository interface {
-	Get(ctx context.Context, alias string) (*domain.AnalyticStat, error)
-	Put(ctx context.Context, id string, aliases []string, clicks []int) error
+type AnalyticClicksRepository interface {
+	Get(ctx context.Context, alias string) (*domain.AnalyticClicks, error)
+	Put(ctx context.Context, ids []string, aliases []string, clicks []int) error
 	Delete(ctx context.Context, alias string) error
 }
 
@@ -21,5 +21,5 @@ type GetAnalyticStatRequest struct {
 }
 
 type GetAnalyticStatResponse struct {
-	AnalyticStat *domain.AnalyticStat `json:"analyticStat"`
+	AnalyticStat *domain.AnalyticClicks `json:"analyticStat"`
 }
