@@ -39,12 +39,17 @@ func Run() int {
 	}
 	defer infra.CloseRedis(context.TODO(), redisCtx)
 
+	clickHouse, err := infra.ConnectClickHouse(context.TODO(), &cfg.Infrastructure.ClickHouse)
+	if err != nil {
+		logger.Error("clickhouse connection failed", "error", err)
+		os.Exit(1)
+	}
+	defer infra.CloseClickHouse(context.TODO(), clickHouse)
+
 	redisCache := caches.NewRedis(redisCtx.Client)
 
-	analyticClicksRepo := analyticclicks.NewCassandra(
-		cassandra.Session,
-		cfg.Infrastructure.Cassandra.Keyspace,
-		redisCache)
+	analyticClicksRepo := analyticclicks.NewClickHouse(
+		cfg.Infrastructure.ClickHouse.Database, clickHouse.Conn, redisCache)
 
 	analyticsCfg := analytics.Config{
 		AnalyticStatRepo: analyticClicksRepo,

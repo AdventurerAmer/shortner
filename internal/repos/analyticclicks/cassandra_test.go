@@ -43,7 +43,7 @@ func TestCassandraAnalyticRepo_GetSucceedsForValidInput(t *testing.T) {
 	}
 	patchId := []string{uuid.NewString()}
 	aliases := []string{expected.Alias}
-	clicks := []int{expected.Clicks}
+	clicks := []int{int(expected.Clicks)}
 	if err := repo.Put(ctx, patchId, aliases, clicks); err != nil {
 		t.Skip()
 	}
@@ -81,7 +81,7 @@ func TestCassandraAnalyticRepo_PutSucceedsForValidInput(t *testing.T) {
 	}
 	ids := []string{uuid.NewString()}
 	aliases := []string{expected.Alias}
-	clicks := []int{expected.Clicks}
+	clicks := []int{int(expected.Clicks)}
 	if err := repo.Put(ctx, ids, aliases, clicks); err != nil {
 		t.Skip()
 	}
@@ -123,7 +123,7 @@ func TestCassandraAnalyticRepo_DeleteSucceedsForValidInput(t *testing.T) {
 	}
 	ids := []string{uuid.NewString()}
 	aliases := []string{expected.Alias}
-	clicks := []int{expected.Clicks}
+	clicks := []int{int(expected.Clicks)}
 	if err := repo.Put(ctx, ids, aliases, clicks); err != nil {
 		t.Skip()
 	}

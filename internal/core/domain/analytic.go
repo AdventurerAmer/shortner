@@ -2,5 +2,5 @@ package domain
 
 type AnalyticClicks struct {
 	Alias  string `json:"alias"`
-	Clicks int    `json:"clicks"`
+	Clicks uint64 `json:"clicks"`
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/AdventurerAmer/shortner/internal/core/ports"
 	"github.com/AdventurerAmer/shortner/internal/repos/analyticclicks"
 	"github.com/AdventurerAmer/shortner/logging"
+	"github.com/ClickHouse/clickhouse-go/v2"
 )
 
 func main() {
@@ -27,15 +28,6 @@ func main() {
 	groupId := "clicks"
 	logger := logging.New(cfg).With(slog.String("service", groupId))
 
-	cassandra, err := infra.ConnectToCassandra(context.TODO(), &cfg.Infrastructure.Cassandra)
-	if err != nil {
-		logger.Error("cassandra connection failed", "error", err)
-		os.Exit(1)
-	}
-	defer infra.CloseCassandra(context.TODO(), cassandra)
-
-	logger.Info("Connected to cassandra")
-
 	clickHouse, err := infra.ConnectClickHouse(context.TODO(), &cfg.Infrastructure.ClickHouse)
 	if err != nil {
 		logger.Error("clickhouse connection failed", "error", err)
@@ -43,12 +35,17 @@ func main() {
 	}
 	defer infra.CloseClickHouse(context.TODO(), clickHouse)
 
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := runMigrations(ctx, clickHouse.Conn); err != nil {
+		logger.Error("clickhouse migrations failed", "error", err)
+		os.Exit(1)
+	}
+
 	logger.Info("Connected to ClickHouse")
 
-	analyticClicksRepo := analyticclicks.NewCassandra(
-		cassandra.Session,
-		cfg.Infrastructure.Cassandra.Keyspace,
-		ports.NewCacheStub())
+	analyticClicksRepo := analyticclicks.NewClickHouse(
+		cfg.Infrastructure.ClickHouse.Database, clickHouse.Conn, ports.NewCacheStub())
 
 	reader := infra.NewKafkaReader(cfg.Infrastructure.Kafka, domain.ClicksBatchTopic, groupId)
 	defer func() {
@@ -81,4 +78,21 @@ func main() {
 	if err := consumer.Receive(context.Background(), h); err != nil {
 		slog.Info("'consumer.Receive' failed", "error", err)
 	}
+}
+
+func runMigrations(ctx context.Context, conn clickhouse.Conn) error {
+	files := []string{
+		"internal/migrations/clickhouse/001_create_clicks_table.sql",
+		"internal/migrations/clickhouse/002_create_clicks_table_view.sql",
+	}
+	for _, file := range files {
+		content, err := os.ReadFile(file)
+		if err != nil {
+			return fmt.Errorf("'os.ReadFile' failed %s: %w", file, err)
+		}
+		if err := conn.Exec(ctx, string(content)); err != nil {
+			return fmt.Errorf("'conn.Exec' failed %s: %w", file, err)
+		}
+	}
+	return nil
 }

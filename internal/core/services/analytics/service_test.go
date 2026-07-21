@@ -45,7 +45,7 @@ func TestAnalyticsService_GetSucceedsForValidInput(t *testing.T) {
 	}
 	patchId := []string{uuid.NewString()}
 	aliases := []string{stat.Alias}
-	clicks := []int{stat.Clicks}
+	clicks := []int{int(stat.Clicks)}
 	if err := repo.Put(ctx, patchId, aliases, clicks); err != nil {
 		t.Skipf("failed to create analytic stat: %+v", err)
 	}
