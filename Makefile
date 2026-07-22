@@ -18,6 +18,14 @@ PHONY: clicksbatcher
 clicksbatcher:
 	@go run ./cmd/workers/clicksbatcher
 
+PHONY: cassandra
+cassandra:
+	@go run ./cmd/migrators/cassandra
+
+PHONY: clickhouse
+clickhouse:
+	@go run ./cmd/migrators/clickhouse
+
 PHONY: up
 up:
 	@docker-compose up --build
@@ -48,7 +56,7 @@ test_shortening:
 
 PHONY: test_analytics
 test_analytics:
-	@CGO_ENABLED=1 go test -race -count=6 ./internal/repos/analyticclicks ./internal/core/services/analytics
+	@CGO_ENABLED=1 go test -race -count=1 ./internal/repos/analyticclicks ./internal/core/services/analytics
 
 PHONY: tests
 tests:

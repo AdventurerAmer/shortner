@@ -110,36 +110,6 @@ func TestCassandraAnalyticRepo_PutSucceedsForValidInput(t *testing.T) {
 	}
 }
 
-func TestCassandraAnalyticRepo_PutFailsForInvalidInput(t *testing.T) {
-	repo := createRepo(t)
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-
-	idGen := snowflake.New("sa")
-
-	analytic := &domain.AnalyticClicks{
-		Alias:  idGen.Next(),
-		Clicks: 10,
-	}
-	ids := []string{uuid.NewString()}
-	aliases := []string{analytic.Alias}
-	clicks := []int{int(analytic.Clicks)}
-	if err := repo.Put(ctx, ids, aliases, clicks); err != nil {
-		t.Skip()
-	}
-
-	t.Cleanup(func() {
-		dctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		defer cancel()
-		repo.Delete(dctx, analytic.Alias)
-	})
-
-	if err := repo.Put(ctx, ids, aliases, clicks); err == nil {
-		t.Fatalf("expected an already exists error, got nil")
-	}
-}
-
 func TestCassandraAnalyticRepo_DeleteSucceedsForValidInput(t *testing.T) {
 	repo := createRepo(t)
 

@@ -1,6 +1,26 @@
 {
     "version": "2.0.0",
     "tasks": [
+       {
+            "label": "Run Cassandra Migrations",
+            "type": "shell",
+            "command": "make cassandra",
+            "group": "none",
+			 "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            }
+        },
+        {
+            "label": "Run ClickHouse Migrations",
+            "type": "shell",
+            "command": "make clickhouse",
+            "group": "none",
+			 "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            }
+        },
         {
             "label": "Run Shortening",
             "type": "shell",
@@ -62,6 +82,8 @@
                 "clear": false
             },
             "dependsOn": [
+                "Run Cassandra Migrations",
+                "Run ClickHouse Migrations",
                 "Run Shortening",
 				"Run Redirecting",
 				"Run Analytics",

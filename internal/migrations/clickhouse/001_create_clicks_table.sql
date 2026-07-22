@@ -1,10 +1,9 @@
 CREATE TABLE IF NOT EXISTS default.analytic_clicks (
     id         String,
     alias      String,           
-    clicks     UInt32,           
+    clicks     UInt64,           
     created_at DateTime DEFAULT now(),
-    _version UInt64 DEFAULT 1
 ) 
-ENGINE = ReplacingMergeTree(_version)
-ORDER BY (alias, id)
-PARTITION BY toYYYYMM(created_at);
+ENGINE = ReplacingMergeTree
+PARTITION BY toYYYYMM(created_at)
+ORDER BY (alias, id);

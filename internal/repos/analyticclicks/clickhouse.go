@@ -2,6 +2,8 @@ package analyticclicks
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
@@ -30,11 +32,23 @@ func (repo *clickHouseRepo) Get(ctx context.Context, alias string) (*domain.Anal
 	}
 	stmt := fmt.Sprintf(
 		`SELECT sum(total_clicks) AS clicks
-		 FROM %s.analytic_clicks_view
+		 FROM %s.analytic_clicks_view FINAL
 		 WHERE alias = ?
 		 GROUP BY alias`, repo.database)
 	row := repo.conn.QueryRow(ctx, stmt, alias)
 	if err := row.Scan(&stat.Clicks); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errs.NewNotFound(err, "analytic clicks not found")
+		}
+		if errors.Is(err, context.DeadlineExceeded) {
+			return nil, errs.NewTimeout(err)
+		}
+		if exception, ok := err.(*clickhouse.Exception); ok {
+			switch exception.Code {
+			case 159:
+				return nil, errs.NewTimeout(err)
+			}
+		}
 		return nil, fmt.Errorf("'row.Scan' failed: %w", err)
 	}
 	if errs.IsNotFound(cacheErr) {
@@ -59,6 +73,15 @@ func (repo *clickHouseRepo) Put(ctx context.Context, ids []string, aliases []str
 		}
 	}
 	if err := batch.Send(); err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			return errs.NewTimeout(err)
+		}
+		if exception, ok := err.(*clickhouse.Exception); ok {
+			switch exception.Code {
+			case 159:
+				return errs.NewTimeout(err)
+			}
+		}
 		return fmt.Errorf("'batch.Send' failed: %w", err)
 	}
 	return nil
@@ -70,6 +93,9 @@ func (repo *clickHouseRepo) Delete(ctx context.Context, alias string) error {
 		%s.analytic_clicks
 		WHERE alias = ?`, repo.database)
 	if err := repo.conn.Exec(ctx, stmt, alias); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return errs.NewNotFound(err, "analytic clicks not found")
+		}
 		return fmt.Errorf("'conn.Exec' failed: %w", err)
 	}
 	return nil

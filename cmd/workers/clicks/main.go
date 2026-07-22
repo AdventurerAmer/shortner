@@ -15,7 +15,6 @@ import (
 	"github.com/AdventurerAmer/shortner/internal/core/ports"
 	"github.com/AdventurerAmer/shortner/internal/repos/analyticclicks"
 	"github.com/AdventurerAmer/shortner/logging"
-	"github.com/ClickHouse/clickhouse-go/v2"
 )
 
 func main() {
@@ -34,13 +33,6 @@ func main() {
 		os.Exit(1)
 	}
 	defer infra.CloseClickHouse(context.TODO(), clickHouse)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	if err := runMigrations(ctx, clickHouse.Conn); err != nil {
-		logger.Error("clickhouse migrations failed", "error", err)
-		os.Exit(1)
-	}
 
 	logger.Info("Connected to ClickHouse")
 
@@ -78,21 +70,4 @@ func main() {
 	if err := consumer.Receive(context.Background(), h); err != nil {
 		slog.Info("'consumer.Receive' failed", "error", err)
 	}
-}
-
-func runMigrations(ctx context.Context, conn clickhouse.Conn) error {
-	files := []string{
-		"internal/migrations/clickhouse/001_create_clicks_table.sql",
-		"internal/migrations/clickhouse/002_create_clicks_table_view.sql",
-	}
-	for _, file := range files {
-		content, err := os.ReadFile(file)
-		if err != nil {
-			return fmt.Errorf("'os.ReadFile' failed %s: %w", file, err)
-		}
-		if err := conn.Exec(ctx, string(content)); err != nil {
-			return fmt.Errorf("'conn.Exec' failed %s: %w", file, err)
-		}
-	}
-	return nil
 }
