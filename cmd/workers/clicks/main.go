@@ -45,7 +45,7 @@ func main() {
 	logger.Info("Connected to ClickHouse")
 
 	analyticClicksRepo := analyticclicks.NewClickHouse(
-		cfg.Infrastructure.ClickHouse.Database, clickHouse.Conn, ports.NewCacheStub())
+		cfg.Infrastructure.ClickHouse.Database, clickHouse.Conn, ports.NewCacheStub(), time.Second)
 
 	reader := infra.NewKafkaReader(cfg.Infrastructure.Kafka, domain.ClicksBatchTopic, groupId)
 	defer func() {

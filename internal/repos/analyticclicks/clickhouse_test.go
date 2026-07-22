@@ -16,11 +16,11 @@ import (
 	"github.com/google/uuid"
 )
 
-var testCtx *test.Cassandra
+var testCtx *test.ClickHouse
 
 func TestMain(m *testing.M) {
 	var err error
-	testCtx, err = test.NewCassandraTestContext()
+	testCtx, err = test.NewClickHouseTestContext()
 	if err != nil {
 		panic(err)
 	}
@@ -110,6 +110,36 @@ func TestCassandraAnalyticRepo_PutSucceedsForValidInput(t *testing.T) {
 	}
 }
 
+func TestCassandraAnalyticRepo_PutFailsForInvalidInput(t *testing.T) {
+	repo := createRepo(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	idGen := snowflake.New("sa")
+
+	analytic := &domain.AnalyticClicks{
+		Alias:  idGen.Next(),
+		Clicks: 10,
+	}
+	ids := []string{uuid.NewString()}
+	aliases := []string{analytic.Alias}
+	clicks := []int{int(analytic.Clicks)}
+	if err := repo.Put(ctx, ids, aliases, clicks); err != nil {
+		t.Skip()
+	}
+
+	t.Cleanup(func() {
+		dctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+		repo.Delete(dctx, analytic.Alias)
+	})
+
+	if err := repo.Put(ctx, ids, aliases, clicks); err == nil {
+		t.Fatalf("expected an already exists error, got nil")
+	}
+}
+
 func TestCassandraAnalyticRepo_DeleteSucceedsForValidInput(t *testing.T) {
 	repo := createRepo(t)
 
@@ -134,11 +164,11 @@ func TestCassandraAnalyticRepo_DeleteSucceedsForValidInput(t *testing.T) {
 	}
 }
 
-func createRepo(t *testing.T) *cassandraRepo {
+func createRepo(t *testing.T) *clickHouseRepo {
 	t.Helper()
-	return &cassandraRepo{
-		session:  testCtx.Cassandra.Session,
-		keyspace: testCtx.Keyspace,
+	return &clickHouseRepo{
+		database: testCtx.Database,
+		conn:     testCtx.ClickHouse.Conn,
 		cache:    ports.NewCacheStub(),
 	}
 }

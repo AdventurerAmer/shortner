@@ -17,11 +17,11 @@ import (
 	"github.com/google/uuid"
 )
 
-var testCtx *test.Cassandra
+var testCtx *test.ClickHouse
 
 func TestMain(m *testing.M) {
 	var err error
-	testCtx, err = test.NewCassandraTestContext()
+	testCtx, err = test.NewClickHouseTestContext()
 	if err != nil {
 		panic(err)
 	}
@@ -76,8 +76,9 @@ func TestAnalyticsService_GetSucceedsForValidInput(t *testing.T) {
 
 func createRepo(t *testing.T) ports.AnalyticClicksRepository {
 	t.Helper()
-	AnalyticRepo := analyticclicks.NewCassandra(testCtx.Cassandra.Session, testCtx.Keyspace, ports.NewCacheStub())
-	return AnalyticRepo
+	repo := analyticclicks.NewClickHouse(testCtx.Database,
+		testCtx.ClickHouse.Conn, ports.NewCacheStub(), time.Second)
+	return repo
 }
 
 func createService(t *testing.T) ports.AnalyticService {

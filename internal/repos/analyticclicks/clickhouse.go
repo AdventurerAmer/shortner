@@ -15,10 +15,11 @@ type clickHouseRepo struct {
 	database string
 	conn     clickhouse.Conn
 	cache    ports.Cache
+	ttl      time.Duration
 }
 
-func NewClickHouse(database string, conn clickhouse.Conn, cache ports.Cache) ports.AnalyticClicksRepository {
-	return &clickHouseRepo{database: database, conn: conn, cache: cache}
+func NewClickHouse(database string, conn clickhouse.Conn, cache ports.Cache, ttl time.Duration) ports.AnalyticClicksRepository {
+	return &clickHouseRepo{database: database, conn: conn, cache: cache, ttl: ttl}
 }
 
 func (repo *clickHouseRepo) Get(ctx context.Context, alias string) (*domain.AnalyticClicks, error) {
@@ -36,20 +37,8 @@ func (repo *clickHouseRepo) Get(ctx context.Context, alias string) (*domain.Anal
 	if err := row.Scan(&stat.Clicks); err != nil {
 		return nil, fmt.Errorf("'row.Scan' failed: %w", err)
 	}
-	// query := repo.session.Query(stmt, alias).Consistency(gocql.One)
-	// if err := query.ScanContext(ctx, &stat.Clicks); err != nil {
-	// 	var timeout gocql.RequestErrReadTimeout
-	// 	switch {
-	// 	case errors.As(err, &timeout):
-	// 		return nil, errs.NewTimeout(err)
-	// 	case errors.Is(err, gocql.ErrNotFound):
-	// 		return nil, errs.NewNotFound(err, "url mapping is not found")
-	// 	}
-	// 	return nil, fmt.Errorf("'query.ScanContext' failed: %w", err)
-	// }
 	if errs.IsNotFound(cacheErr) {
-		ttl := 1 * time.Second // TODO: hardcoding TTL
-		repo.cache.Put(ctx, alias, stat, ttl)
+		repo.cache.Put(ctx, alias, stat, repo.ttl)
 	}
 	return &stat, nil
 }
@@ -83,19 +72,5 @@ func (repo *clickHouseRepo) Delete(ctx context.Context, alias string) error {
 	if err := repo.conn.Exec(ctx, stmt, alias); err != nil {
 		return fmt.Errorf("'conn.Exec' failed: %w", err)
 	}
-	// query := repo.session.Query(stmt, alias)
-	// if err := query.ExecContext(ctx); err != nil {
-	// 	var (
-	// 		readTimeout  gocql.RequestErrReadTimeout
-	// 		writeTimeout gocql.RequestErrWriteTimeout
-	// 	)
-	// 	switch {
-	// 	case errors.As(err, &readTimeout), errors.As(err, &writeTimeout):
-	// 		return errs.NewTimeout(err)
-	// 	case errors.Is(err, gocql.ErrNotFound):
-	// 		return errs.NewNotFound(err, "analytic is not found")
-	// 	}
-	// 	return fmt.Errorf("'query.ExecContext' failed: %w", err)
-	// }
 	return nil
 }

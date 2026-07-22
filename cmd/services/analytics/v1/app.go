@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"time"
 
 	"github.com/AdventurerAmer/shortner/config"
 	"github.com/AdventurerAmer/shortner/infra"
@@ -49,7 +50,7 @@ func Run() int {
 	redisCache := caches.NewRedis(redisCtx.Client)
 
 	analyticClicksRepo := analyticclicks.NewClickHouse(
-		cfg.Infrastructure.ClickHouse.Database, clickHouse.Conn, redisCache)
+		cfg.Infrastructure.ClickHouse.Database, clickHouse.Conn, redisCache, time.Second)
 
 	analyticsCfg := analytics.Config{
 		AnalyticStatRepo: analyticClicksRepo,
