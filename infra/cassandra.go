@@ -13,16 +13,31 @@ type Cassandra struct {
 }
 
 func ConnectToCassandra(ctx context.Context, cfg *config.CassandraConfig) (Cassandra, error) {
-	cluster := gocql.NewCluster(cfg.Host)
-	cluster.Keyspace = cfg.Keyspace
-	cluster.Port = cfg.Port
-	cluster.Consistency = gocql.Quorum
-	cluster.ConnectTimeout = cfg.ConnTimeout
-	session, err := cluster.CreateSession()
-	if err != nil {
-		return Cassandra{}, fmt.Errorf("'cluster.CreateSession' failed: %w", err)
+	type result struct {
+		cassandra Cassandra
+		err       error
 	}
-	return Cassandra{Session: session}, nil
+	ch := make(chan result)
+	go func() {
+		cluster := gocql.NewCluster(cfg.Host)
+		cluster.Port = cfg.Port
+		cluster.Consistency = gocql.Quorum
+		session, err := cluster.CreateSession()
+		if err != nil {
+			err = fmt.Errorf("'cluster.CreateSession' failed: %w", err)
+		}
+		c := Cassandra{
+			Session: session,
+		}
+		ch <- result{cassandra: c, err: err}
+	}()
+
+	select {
+	case res := <-ch:
+		return res.cassandra, res.err
+	case <-ctx.Done():
+		return Cassandra{}, ctx.Err()
+	}
 }
 
 func CloseCassandra(ctx context.Context, cassandra Cassandra) error {

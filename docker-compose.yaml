@@ -12,8 +12,7 @@ services:
       HEAP_NEWSIZE: "128M"
       MAX_HEAP_SIZE: "512M"
     volumes:
-      - cassandra_data:/var/lib/cassandra
-      - ./internal/migrations/cassandra:/docker-entrypoint-initdb.d
+      - cassandra-data:/var/lib/cassandra
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "[ $$(nodetool statusgossip) = running ]"]
@@ -22,23 +21,6 @@ services:
       retries: 10
       start_period: 60s
 
-  cassandra-init:
-    image: cassandra:5.0.8
-    depends_on:
-      cassandra:
-        condition: service_healthy
-    volumes:
-      - ./internal/migrations/cassandra:/init
-    entrypoint: >
-      bash -c "
-        echo 'Running CQL init scripts...' &&
-        for f in /init/*.cql; do
-          echo \"Executing $$f\" && cqlsh cassandra -f $$f;
-        done &&
-        echo 'Init complete.'
-      "
-    restart: on-failure
-
   clickhouse:
     image: clickhouse/clickhouse-server:25.8
     restart: unless-stopped
@@ -46,8 +28,8 @@ services:
       - "8123:8123"   # HTTP
       - "9000:9000"   # Native
     volumes:
-      - clickhouse_data:/var/lib/clickhouse
-      - clickhouse_logs:/var/log/clickhouse-server
+      - clickhouse-data:/var/lib/clickhouse
+      - clickhouse-logs:/var/log/clickhouse-server
     environment:
       - CLICKHOUSE_DB=default
       - CLICKHOUSE_USER=admin
@@ -127,9 +109,9 @@ services:
       retries: 5
 
 volumes:
-  cassandra_data:
-  clickhouse_data:
-  clickhouse_logs:
+  cassandra-data:
+  clickhouse-data:
+  clickhouse-logs:
   redis-data:
   redis-analytics-data:
   redis-insight-data:

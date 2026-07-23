@@ -2,13 +2,16 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/AdventurerAmer/shortner/config"
+	"github.com/AdventurerAmer/shortner/errs"
 	"github.com/AdventurerAmer/shortner/infra"
 	"github.com/AdventurerAmer/shortner/logging"
 	"github.com/ClickHouse/clickhouse-go/v2"
@@ -33,17 +36,14 @@ func main() {
 	}
 	defer infra.CloseClickHouse(context.TODO(), clickHouse)
 
-	mctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
 	path := "internal/migrations/clickhouse" // TODO: hardcoding path
-	if err := runMigrations(mctx, path, clickHouse.Conn); err != nil {
+	if err := runMigrations(context.TODO(), clickHouse.Conn, path, logger); err != nil {
 		logger.Error("migrations failed", "error", err)
 		os.Exit(1)
 	}
 }
 
-func runMigrations(ctx context.Context, path string, conn clickhouse.Conn) error {
+func runMigrations(ctx context.Context, conn clickhouse.Conn, path string, logger *logging.Logger) error {
 	files, err := filepath.Glob(filepath.Join(path, "*.sql"))
 	if err != nil {
 		return fmt.Errorf("'filepath.Glob' failed: %w", err)
@@ -53,9 +53,31 @@ func runMigrations(ctx context.Context, path string, conn clickhouse.Conn) error
 		if err != nil {
 			return fmt.Errorf("'os.ReadFile' failed %s: %w", file, err)
 		}
-		if err := conn.Exec(ctx, string(content)); err != nil {
-			return fmt.Errorf("'conn.Exec' failed %s: %w", file, err)
+		queries := strings.Split(string(content), ";")
+		for _, query := range queries {
+			q := strings.TrimSpace(query)
+			if q == "" || strings.HasPrefix(query, "--") || strings.HasPrefix(query, "//") {
+				continue
+			}
+			logger.Info("Executing Query", "file", file)
+			if err := execQuery(ctx, conn, q); err != nil {
+				return fmt.Errorf("'execQuery' failed %q: %w", q, err)
+			}
 		}
 	}
+	return nil
+}
+
+func execQuery(ctx context.Context, conn clickhouse.Conn, query string) error {
+	dctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	if err := conn.Exec(dctx, query); err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			return errs.NewTimeout(err)
+		}
+		return fmt.Errorf("'conn.Exec' failed %s: %w", query, err)
+	}
+
 	return nil
 }

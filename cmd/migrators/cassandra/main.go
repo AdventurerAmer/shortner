@@ -2,13 +2,16 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/AdventurerAmer/shortner/config"
+	"github.com/AdventurerAmer/shortner/errs"
 	"github.com/AdventurerAmer/shortner/infra"
 	"github.com/AdventurerAmer/shortner/logging"
 	gocql "github.com/apache/cassandra-gocql-driver/v2"
@@ -33,17 +36,14 @@ func main() {
 	}
 	defer infra.CloseCassandra(context.TODO(), cassandra)
 
-	mctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
 	path := "internal/migrations/cassandra" // TODO: hardcoding path
-	if err := runMigrations(mctx, path, cassandra.Session); err != nil {
+	if err := runMigrations(context.TODO(), cassandra.Session, path, logger); err != nil {
 		logger.Error("migrations failed", "error", err)
 		os.Exit(1)
 	}
 }
 
-func runMigrations(ctx context.Context, path string, session *gocql.Session) error {
+func runMigrations(ctx context.Context, session *gocql.Session, path string, logger *logging.Logger) error {
 	files, err := filepath.Glob(filepath.Join(path, "*.cql"))
 	if err != nil {
 		return fmt.Errorf("'filepath.Glob' failed: %w", err)
@@ -53,9 +53,31 @@ func runMigrations(ctx context.Context, path string, session *gocql.Session) err
 		if err != nil {
 			return fmt.Errorf("'os.ReadFile' failed %s: %w", file, err)
 		}
-		if err := session.Query(string(content)).ExecContext(ctx); err != nil {
-			return fmt.Errorf("'session.Query' failed %s: %w", file, err)
+		queries := strings.Split(string(content), ";")
+		for _, query := range queries {
+			q := strings.TrimSpace(query)
+			if q == "" || strings.HasPrefix(query, "--") || strings.HasPrefix(query, "//") {
+				continue
+			}
+			logger.Info("Executing Query", "file", file, "query", q)
+			if err := execQuery(ctx, session, q); err != nil {
+				return fmt.Errorf("'execQuery' failed %q:%q: %w", file, q, err)
+			}
 		}
 	}
+	return nil
+}
+
+func execQuery(ctx context.Context, session *gocql.Session, query string) error {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	if err := session.Query(query).ExecContext(ctx); err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			return errs.NewTimeout(err)
+		}
+		return fmt.Errorf("'session.Query' failed: %w", err)
+	}
+
 	return nil
 }

@@ -25,6 +25,9 @@
             "label": "Run Shortening",
             "type": "shell",
             "command": "make shortening",
+            "dependsOn": [
+                "Run Cassandra Migrations"
+            ],
             "group": "none",
 			 "presentation": {
                 "reveal": "always",
@@ -35,6 +38,9 @@
             "label": "Run Redirecting",
             "type": "shell",
             "command": "make redirecting",
+            "dependsOn": [
+                "Run Cassandra Migrations"
+            ],
             "group": "none",
 			 "presentation": {
                 "reveal": "always",
@@ -45,6 +51,9 @@
             "label": "Run Analytics",
             "type": "shell",
             "command": "make analytics",
+            "dependsOn": [
+                "Run ClickHouse Migrations"
+            ],
             "group": "none",
 			 "presentation": {
                 "reveal": "always",
@@ -55,6 +64,9 @@
             "label": "Run Clicks",
             "type": "shell",
             "command": "make clicks",
+            "dependsOn": [
+                "Run ClickHouse Migrations"
+            ],
             "group": "none",
 			 "presentation": {
                 "reveal": "always",
@@ -65,6 +77,9 @@
             "label": "Run Clicks Batcher",
             "type": "shell",
             "command": "make clicksbatcher",
+            "dependsOn": [
+                "Run ClickHouse Migrations"
+            ],
             "group": "none",
 			 "presentation": {
                 "reveal": "always",
