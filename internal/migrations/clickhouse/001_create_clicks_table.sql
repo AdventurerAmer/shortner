@@ -5,5 +5,6 @@ CREATE TABLE IF NOT EXISTS default.analytic_clicks (
     created_at DateTime DEFAULT now(),
 ) 
 ENGINE = ReplacingMergeTree
+PRIMARY KEY (id, alias)
 PARTITION BY toYYYYMM(created_at)
-ORDER BY (alias, id);
+ORDER BY (id, alias);

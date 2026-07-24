@@ -31,10 +31,10 @@ func (repo *clickHouseRepo) Get(ctx context.Context, alias string) (*domain.Anal
 		return &stat, nil
 	}
 	stmt := fmt.Sprintf(
-		`SELECT sum(total_clicks) AS clicks
-		 FROM %s.analytic_clicks_view FINAL
+		`SELECT sum(total_clicks) As clicks 
+		 FROM %s.analytic_clicks_view_target FINAL
 		 WHERE alias = ?
-		 GROUP BY alias`, repo.database)
+		 GROUP BY (alias)`, repo.database)
 	row := repo.conn.QueryRow(ctx, stmt, alias)
 	if err := row.Scan(&stat.Clicks); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {

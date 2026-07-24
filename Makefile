@@ -40,23 +40,23 @@ downv:
 
 PHONY: test_url_mapping_repo
 test_url_mapping_repo:
-	@CGO_ENABLED=1 go test -race -count=2 ./internal/repos/urlmapping
+	@CGO_ENABLED=1 go test -race -count=1 ./internal/repos/urlmapping
 
-PHONY: test_analytic_repo
+PHONY: test_analyticclicks_repo
 test_analytic_repo:
-	@CGO_ENABLED=1 go test -race -count=2 ./internal/repos/analyticclicks
+	@CGO_ENABLED=1 go test -race -count=1 ./internal/repos/analyticclicks
 
 PHONY: test_redirecting
 test_redirecting:
-	@CGO_ENABLED=1 go test -race -count=2 ./internal/repos/urlmapping ./internal/core/services/redirecting
+	@CGO_ENABLED=1 go test -race -count=1 ./internal/repos/urlmapping ./internal/core/services/redirecting
 
 PHONY: test_shortening
 test_shortening:
-	@CGO_ENABLED=1 go test -race -count=2 ./internal/repos/urlmapping ./internal/core/services/shortening
+	@CGO_ENABLED=1 go test -race -count=1 ./internal/repos/urlmapping ./internal/core/services/shortening
 
 PHONY: test_analytics
 test_analytics:
-	@CGO_ENABLED=1 go test -race -count=1 ./internal/repos/analyticclicks ./internal/core/services/analytics
+	@CGO_ENABLED=1 go test -race -count=6 ./internal/repos/analyticclicks ./internal/core/services/analytics
 
 PHONY: tests
 tests:

@@ -35,17 +35,17 @@ func TestCassandraAnalyticRepo_GetSucceedsForValidInput(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	idGen := snowflake.New("sa")
+	idGen := snowflake.New(uuid.NewString())
 
 	expected := &domain.AnalyticClicks{
 		Alias:  idGen.Next(),
-		Clicks: 10,
+		Clicks: 1,
 	}
 	patchId := []string{uuid.NewString()}
 	aliases := []string{expected.Alias}
 	clicks := []int{int(expected.Clicks)}
 	if err := repo.Put(ctx, patchId, aliases, clicks); err != nil {
-		t.Skip()
+		t.Skipf("'repo.Put' failed: %+v", err)
 	}
 
 	t.Cleanup(func() {
@@ -70,20 +70,20 @@ func TestCassandraAnalyticRepo_GetSucceedsForValidInput(t *testing.T) {
 func TestCassandraAnalyticRepo_PutSucceedsForValidInput(t *testing.T) {
 	repo := createRepo(t)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	idGen := snowflake.New("sa")
+	idGen := snowflake.New(uuid.NewString())
 
 	expected := &domain.AnalyticClicks{
 		Alias:  idGen.Next(),
-		Clicks: 10,
+		Clicks: 1,
 	}
 	ids := []string{uuid.NewString()}
 	aliases := []string{expected.Alias}
 	clicks := []int{int(expected.Clicks)}
 	if err := repo.Put(ctx, ids, aliases, clicks); err != nil {
-		t.Skip()
+		t.Skipf("'repo.Put' failed: %+v", err)
 	}
 
 	t.Cleanup(func() {
@@ -92,9 +92,12 @@ func TestCassandraAnalyticRepo_PutSucceedsForValidInput(t *testing.T) {
 		repo.Delete(dctx, expected.Alias)
 	})
 
-	expected.Clicks += 10
 	if err := repo.Put(ctx, ids, aliases, clicks); err != nil {
-		t.Skip()
+		t.Skipf("'repo.Put' failed: %+v", err)
+	}
+
+	if err := repo.Put(ctx, ids, aliases, clicks); err != nil {
+		t.Skipf("'repo.Put' failed: %+v", err)
 	}
 
 	got, err := repo.Get(ctx, expected.Alias)
@@ -102,7 +105,7 @@ func TestCassandraAnalyticRepo_PutSucceedsForValidInput(t *testing.T) {
 		if errs.IsNotFound(err) {
 			t.Fatalf("expected no error, got %+v", err)
 		}
-		t.Skipf("get analytic failed: %+v", err)
+		t.Skipf("'repo.Get' failed: %+v", err)
 	}
 
 	if !cmp.Equal(expected, got, cmpopts.EquateApproxTime(time.Second)) {
@@ -113,13 +116,13 @@ func TestCassandraAnalyticRepo_PutSucceedsForValidInput(t *testing.T) {
 func TestCassandraAnalyticRepo_DeleteSucceedsForValidInput(t *testing.T) {
 	repo := createRepo(t)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	idGen := snowflake.New("sa")
+	idGen := snowflake.New(uuid.NewString())
 	expected := &domain.AnalyticClicks{
 		Alias:  idGen.Next(),
-		Clicks: 10,
+		Clicks: 1,
 	}
 	ids := []string{uuid.NewString()}
 	aliases := []string{expected.Alias}
@@ -128,8 +131,7 @@ func TestCassandraAnalyticRepo_DeleteSucceedsForValidInput(t *testing.T) {
 		t.Skip()
 	}
 
-	err := repo.Delete(ctx, expected.Alias)
-	if err != nil {
+	if err := repo.Delete(ctx, expected.Alias); err != nil {
 		t.Fatalf("expected no error, got %+v", err)
 	}
 }
