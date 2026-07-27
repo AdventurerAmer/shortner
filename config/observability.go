@@ -3,8 +3,8 @@ package config
 import "time"
 
 type ObservabilityConfig struct {
-	Logging LoggingConfig `koanf:"logging"`
-	// Tracing      TracingConfig      `koanf:"tracing"`
+	Logging      LoggingConfig      `koanf:"logging"`
+	Tracing      TracingConfig      `koanf:"tracing"`
 	HealthChecks HealthChecksConfig `koanf:"healthChecks"`
 }
 

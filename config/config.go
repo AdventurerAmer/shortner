@@ -1,9 +1,12 @@
 package config
 
 import (
+	"flag"
 	"fmt"
 	"strings"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/joho/godotenv"
@@ -64,36 +67,46 @@ type ServicesConfig struct {
 }
 
 func Load() (*Config, error) {
+	var envFile string
+	flag.StringVar(&envFile, "envFile", ".env.local", "env file to load config from")
+	flag.Parse()
+
 	delim := "."
 	k := koanf.New(delim)
 
-	// Load config.yaml first
 	if err := k.Load(file.Provider("config.yaml"), yaml.Parser()); err != nil {
 		return nil, fmt.Errorf("failed to load config.yaml: %w", err)
 	}
 
-	// Override config from .env
-	if err := godotenv.Load(".env"); err != nil {
+	if err := godotenv.Load(envFile); err != nil {
 		return nil, fmt.Errorf("failed to load env vars: %w", err)
 	}
 
-	envPrefix := "SHORTNER_"
-	envDelim := "_"
+	envPrefix := "SHORTNER."
 
 	envOpt := env.Opt{
 		Prefix: envPrefix,
 		TransformFunc: func(k, v string) (string, any) {
 			k = strings.TrimPrefix(k, envPrefix)
-			k = strings.ReplaceAll(k, envDelim, delim)
 			k = strings.ToLower(k)
-			if strings.Contains(v, " ") {
-				return k, strings.Split(v, " ")
+			keyParts := strings.Split(k, delim)
+			for idx, part := range keyParts {
+				keyParts[idx] = snakeCaseToCamelCase(part)
 			}
+			k = strings.Join(keyParts, delim)
+
+			if strings.Contains(v, " ") {
+				valParts := strings.Split(v, " ")
+				if len(valParts) > 1 {
+					return k, valParts
+				}
+			}
+
 			return k, v
 		},
 	}
-	err := k.Load(env.Provider(".", envOpt), nil)
-	if err != nil {
+
+	if err := k.Load(env.Provider(delim, envOpt), nil); err != nil {
 		return nil, fmt.Errorf("failed to parse env vars: %w", err)
 	}
 
@@ -201,4 +214,22 @@ func setServiceDefaults(cfg *ServiceConfig) {
 	if cfg.allowedOrigins == nil {
 		cfg.allowedOrigins = []string{}
 	}
+}
+
+func snakeCaseToCamelCase(s string) string {
+	if s == "" {
+		return ""
+	}
+	parts := strings.Split(s, "_")
+
+	builder := &strings.Builder{}
+	builder.WriteString(parts[0])
+
+	for _, part := range parts[1:] {
+		first, size := utf8.DecodeRuneInString(part)
+		builder.WriteRune(unicode.ToUpper(first))
+		builder.WriteString(part[size:])
+	}
+
+	return builder.String()
 }
