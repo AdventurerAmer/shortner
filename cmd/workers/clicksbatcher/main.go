@@ -15,23 +15,8 @@ import (
 	"github.com/AdventurerAmer/shortner/internal/core/domain"
 	"github.com/AdventurerAmer/shortner/internal/core/ports"
 	"github.com/AdventurerAmer/shortner/logging"
-	"github.com/avast/retry-go"
 	"github.com/google/uuid"
-	"github.com/sony/gobreaker/v2"
 )
-
-var analyticsCB = gobreaker.NewCircuitBreaker[[]byte](gobreaker.Settings{
-	Name:        "analytics",
-	Timeout:     30 * time.Second, // Time in Open state before Half-Open
-	MaxRequests: 5,                // Requests allowed in Half-Open
-	Interval:    60 * time.Second, // Clear counts periodically in Closed
-	ReadyToTrip: func(counts gobreaker.Counts) bool {
-		return counts.ConsecutiveFailures > 5
-	},
-	IsSuccessful: func(err error) bool {
-		return err == nil
-	},
-})
 
 type bucket struct {
 	ch           chan string
@@ -61,53 +46,16 @@ func (b *bucket) dump() {
 	clear(b.m)
 	b.lastDumpTime = time.Now()
 
-	go func(ctx context.Context) {
-		event := domain.ClicksBatchEvent{
-			UUIds:   uuids,
-			Aliases: keys,
-			Clicks:  values,
-		}
+	event := domain.ClicksBatchEvent{
+		UUIds:   uuids,
+		Aliases: keys,
+		Clicks:  values,
+	}
 
-		retryFunc := func() error {
-
-			_, err := analyticsCB.Execute(func() ([]byte, error) {
-				slog.Debug("sending batched clicks event started")
-
-				dctx, cancel := context.WithTimeout(ctx, domain.ClicksBatchEventTimeout)
-				defer cancel()
-
-				key := uuid.NewString()
-				data, err := json.Marshal(&event)
-				if err != nil {
-					return nil, fmt.Errorf("'json.Marshal' failed: %w", err)
-				}
-
-				if err := b.producer.Send(dctx, key, data); err != nil {
-					return nil, fmt.Errorf("'producer.Send' failed: %w", err)
-				}
-
-				logger := logging.Get(ctx)
-				logger.Debug("sending batched clicks event succeeded", "event", event)
-
-				return nil, nil
-			})
-
-			return err
-		}
-
-		if err := retry.Do(
-			retryFunc,
-			retry.Attempts(10),
-			retry.Delay(300*time.Millisecond),
-			retry.MaxJitter(200*time.Millisecond),
-			retry.DelayType(retry.BackOffDelay),
-			retry.LastErrorOnly(true),
-			retry.Context(ctx),
-		); err != nil {
-			logger := logging.Get(ctx)
-			logger.Error("sending clicks event failed", "event", event, "error", err)
-		}
-	}(context.Background())
+	eventProducer := ports.DefaultEventProducer(b.producer)
+	go func() {
+		eventProducer.Fire(context.Background(), event)
+	}()
 }
 
 func newBucket(chCap int, mCap int, producer ports.Producer) *bucket {

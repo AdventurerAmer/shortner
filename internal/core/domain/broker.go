@@ -1,25 +1,23 @@
 package domain
 
-import "time"
+import (
+	"time"
 
-type Topic string
-
-const (
-	ClicksTopic      Topic = "clicks"
-	ClicksBatchTopic Topic = "clicksBatch"
+	"github.com/sony/gobreaker/v2"
 )
 
-const ClickEventTimeout = 2 * time.Second
+const KafkaTimeout = 2 * time.Second
+const KafkaRetryAttempts = 10
 
-type ClickEvent struct {
-	Alias     string    `json:"alias"`
-	Timestamp time.Time `json:"timestamp"`
-}
-
-const ClicksBatchEventTimeout = 2 * time.Second
-
-type ClicksBatchEvent struct {
-	UUIds   []string `json:"uuid"`
-	Aliases []string `json:"aliases"`
-	Clicks  []int    `json:"clicks"`
-}
+var KafkaCB = gobreaker.NewCircuitBreaker[[]byte](gobreaker.Settings{
+	Name:        "kafka",
+	Timeout:     30 * time.Second, // Time in Open state before Half-Open
+	MaxRequests: 5,                // Requests allowed in Half-Open
+	Interval:    60 * time.Second, // Clear counts periodically in Closed
+	ReadyToTrip: func(counts gobreaker.Counts) bool {
+		return counts.ConsecutiveFailures > 5
+	},
+	IsSuccessful: func(err error) bool {
+		return err == nil
+	},
+})

@@ -19,22 +19,21 @@ type Mux struct {
 	logger      *logging.Logger
 	serveMux    *http.ServeMux
 	middlewares []Middleware
+	serve       http.HandlerFunc
 }
 
 func NewMux(logger *logging.Logger) *Mux {
+	serveMux := &http.ServeMux{}
 	return &Mux{
 		logger:   logger,
-		serveMux: &http.ServeMux{},
+		serveMux: serveMux,
+		serve:    serveMux.ServeHTTP,
 	}
 }
 
 func (mux *Mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	serve := mux.serveMux.ServeHTTP
-	for _, m := range slices.Backward(mux.middlewares) {
-		serve = m(serve)
-	}
 	ctx := logging.Set(r.Context(), mux.logger)
-	serve(w, r.WithContext(ctx))
+	mux.serve(w, r.WithContext(ctx))
 }
 
 func (mux *Mux) Post(route string, handler Handler) {
@@ -55,6 +54,11 @@ func (mux *Mux) Delete(route string, handler Handler) {
 
 func (mux *Mux) Use(m Middleware) {
 	mux.middlewares = append(mux.middlewares, m)
+	serve := mux.serveMux.ServeHTTP
+	for _, m := range slices.Backward(mux.middlewares) {
+		serve = m(serve)
+	}
+	mux.serve = serve
 }
 
 func (mux *Mux) composeHTTPHandlerFunc(handler Handler) http.HandlerFunc {
@@ -68,12 +72,14 @@ func (mux *Mux) composeHTTPHandlerFunc(handler Handler) http.HandlerFunc {
 		if err != nil {
 			var expectedErr *errs.Error
 			if !errors.As(err, &expectedErr) {
-				expectedErr = errs.Wrap(err, errs.CodeInternal, "internal server error")
+				expectedErr = errs.NewInternal(err)
 				logger.Error("internal server error", "error", err)
 			}
 			status := errs.HTTPStatus(expectedErr.Code)
 			w.WriteHeader(status)
-			resp = expectedErr
+
+			traceId := GetRequestId(r.Context())
+			resp = errs.NewUserError(traceId, expectedErr)
 		}
 		// We can have nil 'resp' in case of a (302) redirection for-example
 		if resp != nil {

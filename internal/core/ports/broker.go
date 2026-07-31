@@ -1,6 +1,8 @@
 package ports
 
-import "context"
+import (
+	"context"
+)
 
 type Producer interface {
 	Send(ctx context.Context, key string, data []byte) error
