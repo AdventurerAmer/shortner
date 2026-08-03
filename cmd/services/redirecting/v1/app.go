@@ -6,12 +6,13 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/AdventurerAmer/shortner/async"
+	"github.com/AdventurerAmer/shortner/async/goorch"
 	"github.com/AdventurerAmer/shortner/config"
 	"github.com/AdventurerAmer/shortner/infra"
 	"github.com/AdventurerAmer/shortner/internal/brokers"
 	"github.com/AdventurerAmer/shortner/internal/caches"
 	"github.com/AdventurerAmer/shortner/internal/core/domain"
+	"github.com/AdventurerAmer/shortner/internal/core/ports"
 	"github.com/AdventurerAmer/shortner/internal/core/services/redirecting"
 	"github.com/AdventurerAmer/shortner/internal/repos/urlmapping"
 	"github.com/AdventurerAmer/shortner/logging"
@@ -54,8 +55,8 @@ func Run() int {
 	}
 	service := redirecting.New(redirectingCfg)
 
-	orch := async.NewOrchestrator(context.Background())
-	defer orch.Shutdown()
+	orch := goorch.New(context.Background())
+	defer orch.CancelAndWait()
 
 	writer := infra.NewKafkaWriter(cfg.Infrastructure.Kafka, domain.ClicksTopic)
 	defer func() {
@@ -64,7 +65,13 @@ func Run() int {
 
 	producer := brokers.NewKafkaProducer(writer)
 
-	handlers := newHandlers(service, producer, orch)
+	eventProducer, err := ports.NewEventProducer(producer, orch)
+	if err != nil {
+		logger.Error("create event producer failed", "error", err)
+		return 1
+	}
+
+	handlers := newHandlers(service, eventProducer)
 
 	mux := web.NewMux(logger)
 

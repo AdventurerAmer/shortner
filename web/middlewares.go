@@ -31,7 +31,7 @@ func RequestId(next http.HandlerFunc) http.HandlerFunc {
 		w.Header().Set(RequestIdHeader, requestId)
 
 		rctx := context.WithValue(r.Context(), requestIdCtxKey{}, requestId)
-		logger := logging.Get(rctx).With(slog.String("correlation-id", requestId))
+		logger := logging.Get(rctx).With(slog.String("correlationId", requestId))
 		rctx = logging.Set(rctx, logger)
 
 		next(w, r.WithContext(rctx))

@@ -9,6 +9,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/AdventurerAmer/shortner/async/goorch"
 	"github.com/AdventurerAmer/shortner/config"
 	"github.com/AdventurerAmer/shortner/infra"
 	"github.com/AdventurerAmer/shortner/internal/brokers"
@@ -19,10 +20,10 @@ import (
 )
 
 type bucket struct {
-	ch           chan string
-	m            map[string]int
-	lastDumpTime time.Time
-	producer     ports.Producer
+	ch            chan string
+	m             map[string]int
+	lastDumpTime  time.Time
+	eventProducer *ports.EventProducer
 }
 
 func (b *bucket) dump() {
@@ -52,17 +53,14 @@ func (b *bucket) dump() {
 		Clicks:  values,
 	}
 
-	eventProducer := ports.DefaultEventProducer(b.producer)
-	go func() {
-		eventProducer.Fire(context.Background(), event)
-	}()
+	b.eventProducer.Fire(context.Background(), event)
 }
 
-func newBucket(chCap int, mCap int, producer ports.Producer) *bucket {
+func newBucket(chCap int, mCap int, eventProducer *ports.EventProducer) *bucket {
 	return &bucket{
-		ch:       make(chan string, chCap),
-		m:        make(map[string]int, mCap),
-		producer: producer,
+		ch:            make(chan string, chCap),
+		m:             make(map[string]int, mCap),
+		eventProducer: eventProducer,
 	}
 }
 
@@ -70,10 +68,10 @@ type collector struct {
 	chans []chan string
 }
 
-func newCollector(count, batchSize int, producer ports.Producer) *collector {
+func newCollector(count, batchSize int, eventProducer *ports.EventProducer) *collector {
 	chans := make([]chan string, count)
 	for i := range count {
-		b := newBucket(256, batchSize, producer)
+		b := newBucket(256, batchSize, eventProducer)
 		chans[i] = b.ch
 
 		go func(b *bucket) {
@@ -126,11 +124,20 @@ func main() {
 		}
 	}()
 
+	orch := goorch.New(context.Background())
+	defer orch.CancelAndWait()
+
 	producer := brokers.NewKafkaProducer(writer)
+
+	eventProducer, err := ports.NewEventProducer(producer, orch)
+	if err != nil {
+		logger.Error("create event producer failed", "error", err)
+		os.Exit(1)
+	}
 
 	bucketCount := 256
 	batchSize := 1024
-	collector := newCollector(bucketCount, batchSize, producer)
+	collector := newCollector(bucketCount, batchSize, eventProducer)
 
 	reader := infra.NewKafkaReader(cfg.Infrastructure.Kafka, domain.ClicksTopic, groupId)
 	defer func() {
@@ -142,8 +149,7 @@ func main() {
 	consumer := brokers.NewKafkaConsumer(reader)
 
 	h := func(key string, data []byte) {
-		logger.Info("recived event", "status", "started", "key", key)
-		defer logger.Info("recived event", "status", "ended", "key", key)
+		logger.Info("recived event", "key", key)
 
 		var event domain.ClickEvent
 		if err := json.Unmarshal(data, &event); err != nil {
@@ -152,10 +158,9 @@ func main() {
 		}
 
 		alias := event.Alias
-		logger.Debug("event alias", "alias", alias)
 		collector.inc(alias)
 	}
 	if err := consumer.Receive(context.Background(), h); err != nil {
-		slog.Info("'consumer.Receive' failed", "error", err)
+		logger.Error("'consumer.Receive' failed", "error", err)
 	}
 }

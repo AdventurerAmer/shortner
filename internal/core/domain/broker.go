@@ -6,11 +6,11 @@ import (
 	"github.com/sony/gobreaker/v2"
 )
 
-const KafkaTimeout = 2 * time.Second
-const KafkaRetryAttempts = 10
+const SendEventDefaultTimeout = 2 * time.Second
+const SendEventDefaultRetryAttempts = 10
 
-var KafkaCB = gobreaker.NewCircuitBreaker[[]byte](gobreaker.Settings{
-	Name:        "kafka",
+var SendEventCircuitBreaker = gobreaker.NewCircuitBreaker[[]byte](gobreaker.Settings{
+	Name:        "sendEvent",
 	Timeout:     30 * time.Second, // Time in Open state before Half-Open
 	MaxRequests: 5,                // Requests allowed in Half-Open
 	Interval:    60 * time.Second, // Clear counts periodically in Closed

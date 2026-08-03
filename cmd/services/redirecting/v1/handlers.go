@@ -1,12 +1,10 @@
 package v1
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"time"
 
-	"github.com/AdventurerAmer/shortner/async"
 	"github.com/AdventurerAmer/shortner/internal/core/domain"
 	"github.com/AdventurerAmer/shortner/internal/core/ports"
 	"github.com/AdventurerAmer/shortner/web"
@@ -15,16 +13,14 @@ import (
 )
 
 type handlers struct {
-	service  ports.RedirectingService
-	producer ports.Producer
-	orch     *async.Orchestrator
+	service       ports.RedirectingService
+	eventProducer *ports.EventProducer
 }
 
-func newHandlers(service ports.RedirectingService, producer ports.Producer, orch *async.Orchestrator) *handlers {
+func newHandlers(service ports.RedirectingService, eventProducer *ports.EventProducer) *handlers {
 	return &handlers{
-		service:  service,
-		producer: producer,
-		orch:     orch,
+		service:       service,
+		eventProducer: eventProducer,
 	}
 }
 
@@ -55,13 +51,7 @@ func (h *handlers) redirect(c *web.Context) (any, error) {
 		Alias:     req.Alias,
 		Timestamp: time.Now().UTC(),
 	}
-
-	eventProducer := ports.DefaultEventProducer(h.producer)
-
-	goFunc := func(ctx context.Context) {
-		eventProducer.Fire(ctx, event)
-	}
-	h.orch.Go(c.Ctx(), goFunc)
+	h.eventProducer.Fire(c.Ctx(), event)
 
 	// http.StatusFound represents a temporary (302) redirect
 	http.Redirect(c.ResponseWriter, c.Request, resp.LongURL, http.StatusFound)
