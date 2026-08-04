@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
+	"time"
 
 	"github.com/AdventurerAmer/shortner/internal/core/ports"
+	"github.com/AdventurerAmer/shortner/logging"
 	"github.com/segmentio/kafka-go"
 )
 
@@ -42,18 +43,53 @@ func NewKafkaConsumer(reader *kafka.Reader) ports.Consumer {
 }
 
 func (c *kafkaConsumer) Receive(ctx context.Context, handler ports.ConsumerHandlerFunc) error {
+	logger := logging.Get(ctx)
+
+loop:
 	for {
-		msg, err := c.reader.ReadMessage(ctx)
+		msg, err := c.reader.FetchMessage(ctx)
 		if err != nil {
-			if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
-				break
+			if errors.Is(err, context.Canceled) {
+				break loop
 			}
-			slog.Error("'reader.ReadMessage' failed", "error", err)
+			logger.Error("'reader.FetchMessage' failed", "error", err)
 			continue
 		}
+
+		logger.Debug("read message successfully")
+
 		key := string(msg.Key)
 		data := msg.Value
-		handler(key, data)
+		if err := handler(ctx, key, data); err != nil {
+			logger.Error("failed to handle message", "error", err)
+			continue
+		}
+
+		logger.Debug("handled message successfully")
+
+		var lastErr error
+		for range 10 {
+			err := func() error {
+				dctx, cancel := context.WithTimeout(ctx, time.Second)
+				defer cancel()
+
+				if err := c.reader.CommitMessages(dctx, msg); err != nil {
+					return fmt.Errorf("'reader.CommitMessages' failed: %w", err)
+				}
+				return nil
+			}()
+			if err != nil {
+				lastErr = err
+			} else {
+				lastErr = nil
+				break
+			}
+		}
+		if lastErr != nil {
+			logger.Error("ack message failed", "error", lastErr)
+		} else {
+			logger.Debug("acked message successfully")
+		}
 	}
 	return nil
 }

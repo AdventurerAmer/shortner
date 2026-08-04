@@ -48,26 +48,27 @@ func main() {
 
 	consumer := brokers.NewKafkaConsumer(reader)
 
-	h := func(key string, data []byte) {
+	h := func(ctx context.Context, key string, data []byte) error {
 		logger.Info("recived event", "status", "started", "key", key)
 		defer logger.Info("recived event", "status", "ended", "key", key)
 
 		var event domain.ClicksBatchEvent
 		if err := json.Unmarshal(data, &event); err != nil {
-			logger.Error("'json.Unmarshal' failed", "key", key, "error", err)
-			return
+			return fmt.Errorf("'json.Unmarshal' failed: %w", err)
 		}
 
 		// TODO: hardcoding timeout
-		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		dctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 		defer cancel()
 
 		// TODO: we have need manual ack here...
-		if err := analyticClicksRepo.Put(ctx, event.UUIds, event.Aliases, event.Clicks); err != nil {
-			logger.Error("analyticStatRepo.Put failed", "error", err)
+		if err := analyticClicksRepo.Put(dctx, event.UUIds, event.Aliases, event.Clicks); err != nil {
+			return fmt.Errorf("'analyticClicksRepo.Put' failed: %w", err)
 		}
+
+		return nil
 	}
 	if err := consumer.Receive(context.Background(), h); err != nil {
-		slog.Info("'consumer.Receive' failed", "error", err)
+		logger.Error("'consumer.Receive' failed", "error", err)
 	}
 }

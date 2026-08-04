@@ -148,17 +148,19 @@ func main() {
 
 	consumer := brokers.NewKafkaConsumer(reader)
 
-	h := func(key string, data []byte) {
-		logger.Info("recived event", "key", key)
+	h := func(ctx context.Context, key string, data []byte) error {
+		logger.Info("recived event", "status", "started", "key", key)
+		defer logger.Info("recived event", "status", "ended", "key", key)
 
 		var event domain.ClickEvent
 		if err := json.Unmarshal(data, &event); err != nil {
-			logger.Error("'json.Unmarshal' failed", "key", key, "error", err)
-			return
+			return fmt.Errorf("'json.Unmarshal' failed: %w", err)
 		}
 
 		alias := event.Alias
 		collector.inc(alias)
+
+		return nil
 	}
 	if err := consumer.Receive(context.Background(), h); err != nil {
 		logger.Error("'consumer.Receive' failed", "error", err)
