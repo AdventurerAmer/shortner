@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/AdventurerAmer/shortner/internal/core/ports"
 	"github.com/AdventurerAmer/shortner/logging"
@@ -42,54 +41,62 @@ func NewKafkaConsumer(reader *kafka.Reader) ports.Consumer {
 	}
 }
 
-func (c *kafkaConsumer) Receive(ctx context.Context, handler ports.ConsumerHandlerFunc) error {
+func (c *kafkaConsumer) Receive(ctx context.Context) (<-chan ports.ConsumerMessage, <-chan struct{}) {
 	logger := logging.Get(ctx)
 
-loop:
-	for {
-		msg, err := c.reader.FetchMessage(ctx)
-		if err != nil {
-			if errors.Is(err, context.Canceled) {
-				break loop
-			}
-			logger.Error("'reader.FetchMessage' failed", "error", err)
-			continue
-		}
+	msgCh := make(chan ports.ConsumerMessage, 1)
+	doneCh := make(chan struct{})
 
-		logger.Debug("read message successfully")
-
-		key := string(msg.Key)
-		data := msg.Value
-		if err := handler(ctx, key, data); err != nil {
-			logger.Error("failed to handle message", "error", err)
-			continue
-		}
-
-		logger.Debug("handled message successfully")
-
-		var lastErr error
-		for range 10 {
-			err := func() error {
-				dctx, cancel := context.WithTimeout(ctx, time.Second)
-				defer cancel()
-
-				if err := c.reader.CommitMessages(dctx, msg); err != nil {
-					return fmt.Errorf("'reader.CommitMessages' failed: %w", err)
-				}
-				return nil
-			}()
+	go func() {
+		for {
+			msg, err := c.reader.FetchMessage(ctx)
 			if err != nil {
-				lastErr = err
-			} else {
-				lastErr = nil
-				break
+				if errors.Is(err, context.Canceled) {
+					close(doneCh)
+					close(msgCh)
+					return
+				}
+				logger.Error("'reader.FetchMessage' failed", "error", err)
+				continue
+			}
+			key := string(msg.Key)
+			data := msg.Value
+			msgCh <- ports.ConsumerMessage{
+				Key:         key,
+				Data:        data,
+				OriginalMsg: msg,
 			}
 		}
-		if lastErr != nil {
-			logger.Error("ack message failed", "error", lastErr)
-		} else {
-			logger.Debug("acked message successfully")
-		}
+	}()
+
+	return msgCh, doneCh
+
+	// loop:
+	// 	for {
+	// 		msg, err := c.reader.FetchMessage(ctx)
+	// 		if err != nil {
+	// 			if errors.Is(err, context.Canceled) {
+	// 				break loop
+	// 			}
+	// 			logger.Error("'reader.FetchMessage' failed", "error", err)
+	// 			continue
+	// 		}
+
+	// 		logger.Debug("read message successfully")
+
+	// 		if err := handler(ctx, key, data); err != nil {
+	// 			logger.Error("failed to handle message", "error", err)
+	// 			continue
+	// 		}
+
+	// 		logger.Debug("handled message successfully")
+
+}
+
+func (c *kafkaConsumer) Ack(ctx context.Context, msg ports.ConsumerMessage) error {
+	originalMsg := msg.OriginalMsg.(kafka.Message)
+	if err := c.reader.CommitMessages(ctx, originalMsg); err != nil {
+		return fmt.Errorf("'reader.CommitMessages' failed: %w", err)
 	}
 	return nil
 }

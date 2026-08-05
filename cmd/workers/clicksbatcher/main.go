@@ -16,6 +16,7 @@ import (
 	"github.com/AdventurerAmer/shortner/internal/core/domain"
 	"github.com/AdventurerAmer/shortner/internal/core/ports"
 	"github.com/AdventurerAmer/shortner/logging"
+	"github.com/AdventurerAmer/shortner/worker"
 	"github.com/google/uuid"
 )
 
@@ -148,12 +149,12 @@ func main() {
 
 	consumer := brokers.NewKafkaConsumer(reader)
 
-	h := func(ctx context.Context, key string, data []byte) error {
-		logger.Info("recived event", "status", "started", "key", key)
-		defer logger.Info("recived event", "status", "ended", "key", key)
+	h := func(hctx context.Context, msg ports.ConsumerMessage) error {
+		logger.Info("recived event", "status", "started", "key", msg.Key)
+		defer logger.Info("recived event", "status", "ended", "key", msg.Key)
 
 		var event domain.ClickEvent
-		if err := json.Unmarshal(data, &event); err != nil {
+		if err := json.Unmarshal(msg.Data, &event); err != nil {
 			return fmt.Errorf("'json.Unmarshal' failed: %w", err)
 		}
 
@@ -162,7 +163,6 @@ func main() {
 
 		return nil
 	}
-	if err := consumer.Receive(context.Background(), h); err != nil {
-		logger.Error("'consumer.Receive' failed", "error", err)
-	}
+	app := worker.New(logger, consumer)
+	app.Run(h)
 }
