@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 
+	"github.com/AdventurerAmer/shortner/apps/web"
 	"github.com/AdventurerAmer/shortner/config"
 	"github.com/AdventurerAmer/shortner/infra"
 	"github.com/AdventurerAmer/shortner/internal/core/ports"
@@ -13,7 +14,6 @@ import (
 	"github.com/AdventurerAmer/shortner/internal/repos/urlmapping"
 	"github.com/AdventurerAmer/shortner/logging"
 	"github.com/AdventurerAmer/shortner/snowflake"
-	"github.com/AdventurerAmer/shortner/web"
 )
 
 func Run() int {

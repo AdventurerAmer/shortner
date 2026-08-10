@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/AdventurerAmer/shortner/apps/web"
 	"github.com/AdventurerAmer/shortner/internal/core/domain"
 	"github.com/AdventurerAmer/shortner/internal/core/ports"
-	"github.com/AdventurerAmer/shortner/web"
 
 	"github.com/sony/gobreaker/v2"
 )

@@ -12,18 +12,31 @@ import (
 )
 
 type App struct {
+	Config
 	logger   *logging.Logger
 	consumer ports.Consumer
 }
 
-func New(logger *logging.Logger, consumer ports.Consumer) *App {
-	return &App{
+func New(logger *logging.Logger, consumer ports.Consumer, opts ...Option) (*App, error) {
+	cfg := Config{
+		gracefulShutdownTimeout: 10 * time.Second,
+		ackTimeout:              time.Second,
+		ackRetries:              10,
+	}
+	for _, opt := range opts {
+		if err := opt(&cfg); err != nil {
+			return nil, err
+		}
+	}
+	app := &App{
+		Config:   cfg,
 		logger:   logger,
 		consumer: consumer,
 	}
+	return app, nil
 }
 
-func (app *App) Run(handler ports.ConsumerHandlerFunc) int {
+func (app *App) Run(handler ports.ConsumerHandlerFunc) error {
 	logger := app.logger
 
 	sigCtx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
@@ -32,7 +45,8 @@ func (app *App) Run(handler ports.ConsumerHandlerFunc) int {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	msgCh, doneCh := app.consumer.Receive(sigCtx)
+	msgCh := app.consumer.Receive(sigCtx)
+	done := make(chan struct{})
 
 	go func() {
 		for msg := range msgCh {
@@ -41,9 +55,9 @@ func (app *App) Run(handler ports.ConsumerHandlerFunc) int {
 				continue
 			}
 			var lastErr error
-			for range 10 {
+			for range app.ackRetries {
 				err := func() error {
-					dctx, cancel := context.WithTimeout(ctx, time.Second)
+					dctx, cancel := context.WithTimeout(ctx, app.ackTimeout)
 					defer cancel()
 					if err := app.consumer.Ack(dctx, msg); err != nil {
 						return fmt.Errorf("'consumer.Ack' failed: %w", err)
@@ -63,14 +77,16 @@ func (app *App) Run(handler ports.ConsumerHandlerFunc) int {
 				logger.Debug("acked message successfully")
 			}
 		}
+		close(done)
 	}()
 
 	<-sigCtx.Done()
 
 	select {
-	case <-doneCh:
-	case <-time.After(10 * time.Second):
+	case <-done:
+	case <-time.After(app.gracefulShutdownTimeout):
+		return fmt.Errorf("graceful shutdown timeout")
 	}
 
-	return 0
+	return nil
 }

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/AdventurerAmer/shortner/apps/web"
 	"github.com/AdventurerAmer/shortner/internal/core/ports"
-	"github.com/AdventurerAmer/shortner/web"
 	"github.com/google/uuid"
 )
 

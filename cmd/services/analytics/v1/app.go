@@ -7,13 +7,13 @@ import (
 	"os"
 	"time"
 
+	"github.com/AdventurerAmer/shortner/apps/web"
 	"github.com/AdventurerAmer/shortner/config"
 	"github.com/AdventurerAmer/shortner/infra"
 	"github.com/AdventurerAmer/shortner/internal/caches"
 	"github.com/AdventurerAmer/shortner/internal/core/services/analytics"
 	"github.com/AdventurerAmer/shortner/internal/repos/analyticclicks"
 	"github.com/AdventurerAmer/shortner/logging"
-	"github.com/AdventurerAmer/shortner/web"
 )
 
 func Run() int {

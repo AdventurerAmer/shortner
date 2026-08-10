@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 
+	"github.com/AdventurerAmer/shortner/apps/web"
 	"github.com/AdventurerAmer/shortner/async/goorch"
 	"github.com/AdventurerAmer/shortner/config"
 	"github.com/AdventurerAmer/shortner/infra"
@@ -16,7 +17,6 @@ import (
 	"github.com/AdventurerAmer/shortner/internal/core/services/redirecting"
 	"github.com/AdventurerAmer/shortner/internal/repos/urlmapping"
 	"github.com/AdventurerAmer/shortner/logging"
-	"github.com/AdventurerAmer/shortner/web"
 )
 
 func Run() int {

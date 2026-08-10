@@ -3,8 +3,8 @@ package v1
 import (
 	"fmt"
 
+	"github.com/AdventurerAmer/shortner/apps/web"
 	"github.com/AdventurerAmer/shortner/internal/core/ports"
-	"github.com/AdventurerAmer/shortner/web"
 )
 
 type handlers struct {

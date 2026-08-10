@@ -17,6 +17,6 @@ type ConsumerMessage struct {
 type ConsumerHandlerFunc = func(ctx context.Context, msg ConsumerMessage) error
 
 type Consumer interface {
-	Receive(ctx context.Context) (<-chan ConsumerMessage, <-chan struct{})
+	Receive(ctx context.Context) <-chan ConsumerMessage
 	Ack(ctx context.Context, msg ConsumerMessage) error
 }

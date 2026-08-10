@@ -41,7 +41,7 @@ func NewKafkaConsumer(reader *kafka.Reader) ports.Consumer {
 	}
 }
 
-func (c *kafkaConsumer) Receive(ctx context.Context) (<-chan ports.ConsumerMessage, <-chan struct{}) {
+func (c *kafkaConsumer) Receive(ctx context.Context) <-chan ports.ConsumerMessage {
 	logger := logging.Get(ctx)
 
 	msgCh := make(chan ports.ConsumerMessage, 1)
@@ -69,28 +69,7 @@ func (c *kafkaConsumer) Receive(ctx context.Context) (<-chan ports.ConsumerMessa
 		}
 	}()
 
-	return msgCh, doneCh
-
-	// loop:
-	// 	for {
-	// 		msg, err := c.reader.FetchMessage(ctx)
-	// 		if err != nil {
-	// 			if errors.Is(err, context.Canceled) {
-	// 				break loop
-	// 			}
-	// 			logger.Error("'reader.FetchMessage' failed", "error", err)
-	// 			continue
-	// 		}
-
-	// 		logger.Debug("read message successfully")
-
-	// 		if err := handler(ctx, key, data); err != nil {
-	// 			logger.Error("failed to handle message", "error", err)
-	// 			continue
-	// 		}
-
-	// 		logger.Debug("handled message successfully")
-
+	return msgCh
 }
 
 func (c *kafkaConsumer) Ack(ctx context.Context, msg ports.ConsumerMessage) error {
