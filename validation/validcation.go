@@ -9,7 +9,7 @@ import (
 )
 
 func Validate(s any) error {
-	v := validator.New()
+	v := validator.New(validator.WithRequiredStructEnabled())
 	v.RegisterTagNameFunc(func(fld reflect.StructField) string {
 		name := strings.SplitN(fld.Tag.Get("json"), ",", 2)[0]
 		if name == "-" {

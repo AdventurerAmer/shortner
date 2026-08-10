@@ -43,7 +43,7 @@ test_url_mapping_repo:
 	@CGO_ENABLED=1 go test -race -count=1 ./internal/repos/urlmapping
 
 PHONY: test_analyticclicks_repo
-test_analytic_repo:
+test_analyticclicks_repo:
 	@CGO_ENABLED=1 go test -race -count=1 ./internal/repos/analyticclicks
 
 PHONY: test_redirecting
@@ -60,4 +60,4 @@ test_analytics:
 
 PHONY: tests
 tests:
-	@CGO_ENABLED=1 go test -race -count=1 ./internal/repos/urlmappingrepo ./internal/core/services/redirecting ./internal/core/services/shortening
+	@CGO_ENABLED=1 go test -race -count=1 ./internal/repos/urlmapping ./internal/repos/analyticclicks ./internal/core/services/redirecting ./internal/core/services/shortening ./internal/core/services/analytics

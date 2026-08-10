@@ -2,113 +2,133 @@ package urlmapping
 
 import (
 	"context"
-	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/AdventurerAmer/shortner/config"
+	"github.com/AdventurerAmer/shortner/errs"
 	"github.com/AdventurerAmer/shortner/internal/core/domain"
 	"github.com/AdventurerAmer/shortner/internal/core/ports"
 	"github.com/AdventurerAmer/shortner/test"
+	gocql "github.com/apache/cassandra-gocql-driver/v2"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/uuid"
+	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/modules/cassandra"
 )
 
-var testCtx *test.Cassandra
+func TestCassandraURLMappingRepo(t *testing.T) {
+	t.Parallel()
 
-func TestMain(m *testing.M) {
-	var err error
-	testCtx, err = test.NewCassandraTestContext()
+	if err := test.ChangeToRootDir(); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := config.Load()
 	if err != nil {
-		panic(err)
-	}
-	exitCode := m.Run()
-	testCtx.Shutdown()
-	os.Exit(exitCode)
-}
-
-func TestCassandraURLMappingRepo_CreateSuccessForValidInput(t *testing.T) {
-	repo := createRepo(t)
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-
-	m := &domain.URLMapping{
-		Alias:     uuid.NewString(),
-		LongURL:   "www.example.com/examples",
-		CreatedAt: time.Now().UTC(),
-		UserId:    uuid.NewString(),
-	}
-	if err := repo.Create(ctx, m); err != nil {
-		t.Errorf("expected no error, got %+v", m)
+		t.Fatal(err)
 	}
 
-	t.Cleanup(func() {
-		dctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx := context.Background()
+	ctr, err := cassandra.Run(ctx,
+		"cassandra:5.0.8",
+		// TODO: hardcoding migrations files for now...
+		cassandra.WithInitScripts(
+			filepath.Join("internal", "migrations", "cassandra", "001_create_shortner_keyspace.cql"),
+			filepath.Join("internal", "migrations", "cassandra", "002_create_url_mapping_table.cql"),
+		),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	testcontainers.CleanupContainer(t, ctr)
+	host, err := ctr.ConnectionHost(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cluster := gocql.NewCluster(host)
+	session, err := cluster.CreateSession()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer session.Close()
+
+	keyspace := cfg.Infrastructure.Cassandra.Keyspace
+	repo := NewCassandra(session, keyspace, ports.NewCacheStub())
+
+	exampleURL := "www.example.com/examples"
+
+	t.Run("CreateSucceedsForValidInput", func(t *testing.T) {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
-		repo.Delete(dctx, m.Alias)
+
+		expected := &domain.URLMapping{
+			UserId:    uuid.NewString(),
+			CreatedAt: time.Now().UTC(),
+			Alias:     uuid.NewString(),
+			LongURL:   exampleURL,
+		}
+		if err := repo.Create(ctx, expected); err != nil {
+			t.Fatalf("expected no error, got %+v", nil)
+		}
+		got, err := repo.Get(ctx, expected.Alias)
+		if err != nil {
+			if errs.IsNotFound(err) {
+				t.Fatalf("expected no error, got %+v", err)
+			} else {
+				t.Skipf("failed to get url mapping: %+v", err)
+			}
+		}
+
+		if !cmp.Equal(expected, got, cmpopts.EquateApproxTime(time.Second)) {
+			t.Errorf("expected %+v, got %+v, diff %+v", expected, got, cmp.Diff(expected, got))
+		}
 	})
-}
 
-func TestCassandraURLMappingRepo_GetsuccessForValidInput(t *testing.T) {
-	repo := createRepo(t)
+	t.Run("GetSucceedsForValidInput", func(t *testing.T) {
+		expected := &domain.URLMapping{
+			UserId:    uuid.NewString(),
+			CreatedAt: time.Now().UTC(),
+			Alias:     uuid.NewString(),
+			LongURL:   exampleURL,
+		}
+		if err := repo.Create(ctx, expected); err != nil {
+			t.Skipf("failed to create url mapping: %+v", err)
+		}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
+		got, err := repo.Get(ctx, expected.Alias)
+		if err != nil {
+			t.Fatalf("expected no error, got %+v", err)
+		}
 
-	expected := &domain.URLMapping{
-		Alias:     uuid.NewString(),
-		LongURL:   "www.example.com/examples",
-		CreatedAt: time.Now().UTC(),
-		UserId:    uuid.NewString(),
-	}
-	if err := repo.Create(ctx, expected); err != nil {
-		t.Skip()
-	}
+		if !cmp.Equal(expected, got, cmpopts.EquateApproxTime(time.Second)) {
+			t.Errorf("expected %+v, got %+v, diff %+v", expected, got, cmp.Diff(expected, got))
+		}
+	})
 
-	got, err := repo.Get(ctx, expected.Alias)
-	if err != nil {
-		t.Fatalf("expected no error, got %+v", err)
-	}
-
-	t.Cleanup(func() {
-		dctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	t.Run("DeleteSucceedsForValidInput", func(t *testing.T) {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
-		repo.Delete(dctx, expected.Alias)
+
+		expected := &domain.URLMapping{
+			UserId:    uuid.NewString(),
+			CreatedAt: time.Now().UTC(),
+			Alias:     uuid.NewString(),
+			LongURL:   exampleURL,
+		}
+		if err := repo.Create(ctx, expected); err != nil {
+			t.Skipf("failed to create url mapping: %+v", err)
+		}
+
+		if err := repo.Delete(ctx, expected.Alias); err != nil {
+			t.Fatalf("expected no error, got %+v", err)
+		}
+
+		_, err := repo.Get(ctx, expected.Alias)
+		if err == nil || !errs.IsNotFound(err) {
+			t.Fatalf("expected a not found error, got %+v", err)
+		}
 	})
-
-	if !cmp.Equal(expected, got, cmpopts.EquateApproxTime(time.Second)) {
-		t.Errorf("expected %+v, got %+v, diff %+v", expected, got, cmp.Diff(expected, got))
-	}
-}
-
-func TestCassandraURLMappingRepo_DeletesuccessForValidInput(t *testing.T) {
-	repo := createRepo(t)
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-
-	expected := &domain.URLMapping{
-		Alias:     uuid.NewString(),
-		LongURL:   "www.example.com/examples",
-		CreatedAt: time.Now().UTC(),
-		UserId:    uuid.NewString(),
-	}
-	if err := repo.Create(ctx, expected); err != nil {
-		t.Skip()
-	}
-
-	err := repo.Delete(ctx, expected.Alias)
-	if err != nil {
-		t.Fatalf("expected no error, got %+v", err)
-	}
-}
-
-func createRepo(t *testing.T) *cassandraRepo {
-	t.Helper()
-	return &cassandraRepo{
-		session:  testCtx.Cassandra.Session,
-		keyspace: testCtx.Keyspace,
-		cache:    ports.NewCacheStub(),
-	}
 }

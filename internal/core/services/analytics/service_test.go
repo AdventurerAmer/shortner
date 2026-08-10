@@ -2,92 +2,116 @@ package analytics
 
 import (
 	"context"
-	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/AdventurerAmer/shortner/config"
 	"github.com/AdventurerAmer/shortner/errs"
 	"github.com/AdventurerAmer/shortner/internal/core/domain"
 	"github.com/AdventurerAmer/shortner/internal/core/ports"
 	"github.com/AdventurerAmer/shortner/internal/repos/analyticclicks"
 	"github.com/AdventurerAmer/shortner/snowflake"
 	"github.com/AdventurerAmer/shortner/test"
+	"github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/uuid"
+	"github.com/testcontainers/testcontainers-go"
+	testClickhouse "github.com/testcontainers/testcontainers-go/modules/clickhouse"
 )
 
-var testCtx *test.ClickHouse
+func TestAnalyticsService_ClickHouseRepo(t *testing.T) {
+	t.Parallel()
 
-func TestMain(m *testing.M) {
-	var err error
-	testCtx, err = test.NewClickHouseTestContext()
+	if err := test.ChangeToRootDir(); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := config.Load()
 	if err != nil {
-		panic(err)
-	}
-	exitCode := m.Run()
-	testCtx.Shutdown()
-	os.Exit(exitCode)
-}
-
-func TestAnalyticsService_GetSucceedsForValidInput(t *testing.T) {
-	repo := createRepo(t)
-	service := createService(t)
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-
-	shard := "sa"
-	idGenerator := snowflake.New(shard)
-	stat := &domain.AnalyticClicks{
-		Alias:  idGenerator.Next(),
-		Clicks: 10,
-	}
-	patchId := []string{uuid.NewString()}
-	aliases := []string{stat.Alias}
-	clicks := []int{int(stat.Clicks)}
-	if err := repo.Put(ctx, patchId, aliases, clicks); err != nil {
-		t.Skipf("failed to create analytic stat: %+v", err)
+		t.Fatal(err)
 	}
 
-	t.Cleanup(func() {
-		dctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		defer cancel()
-		repo.Delete(dctx, stat.Alias)
-	})
+	ctx := context.Background()
 
-	req := ports.GetAnalyticStatRequest{
-		Alias: stat.Alias,
-	}
-	resp, err := service.Get(ctx, req)
+	user, password, dbname := "clickhouse", "password", "testdb"
+
+	ctr, err := testClickhouse.Run(ctx,
+		"clickhouse/clickhouse-server:25.8",
+		testClickhouse.WithUsername(user),
+		testClickhouse.WithPassword(password),
+		testClickhouse.WithDatabase(dbname),
+		// TODO: hardcoding migrations files for now
+		testClickhouse.WithInitScripts(
+			filepath.Join("internal", "migrations", "clickhouse", "001_create_clicks_table.sql"),
+			filepath.Join("internal", "migrations", "clickhouse", "002_create_clicks_table_view.sql"),
+		),
+	)
+	testcontainers.CleanupContainer(t, ctr)
+
+	connStr, err := ctr.ConnectionString(ctx)
 	if err != nil {
-		if errs.IsNotFound(err) {
-			t.Fatalf("expected no error, got %+v", err)
-		}
-		t.Skipf("get analytic failed: %+v", err)
+		t.Fatal(err)
 	}
 
-	expected := stat
-	got := resp.AnalyticStat
-	if !cmp.Equal(expected, got, cmpopts.EquateApproxTime(time.Second)) {
-		t.Errorf("expected %+v, got %+v, diff %+v", expected, got, cmp.Diff(expected, got))
+	options, err := clickhouse.ParseDSN(connStr)
+	if err != nil {
+		t.Fatal(err)
 	}
-}
 
-func createRepo(t *testing.T) ports.AnalyticClicksRepository {
-	t.Helper()
-	repo := analyticclicks.NewClickHouse(testCtx.Database,
-		testCtx.ClickHouse.Conn, ports.NewCacheStub(), time.Second)
-	return repo
-}
+	conn, err := clickhouse.Open(options)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
 
-func createService(t *testing.T) ports.AnalyticService {
-	t.Helper()
-	repo := createRepo(t)
-	cfg := Config{
+	if err := conn.Ping(ctx); err != nil {
+		t.Fatal(err)
+	}
+
+	database := cfg.Infrastructure.ClickHouse.Database
+	repo := analyticclicks.NewClickHouse(database, conn, ports.NewCacheStub(), time.Second)
+
+	srvCfg := Config{
 		AnalyticStatRepo: repo,
 	}
-	return &service{
-		Config: cfg,
+	service := &service{
+		Config: srvCfg,
 	}
+
+	t.Run("GetSucceedsForValidInput", func(t *testing.T) {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+
+		shard := "sa"
+		idGenerator := snowflake.New(shard)
+		stat := &domain.AnalyticClicks{
+			Alias:  idGenerator.Next(),
+			Clicks: 10,
+		}
+		patchId := []string{uuid.NewString()}
+		aliases := []string{stat.Alias}
+		clicks := []int{int(stat.Clicks)}
+		if err := repo.Put(ctx, patchId, aliases, clicks); err != nil {
+			t.Skipf("failed to create analytic stat: %+v", err)
+		}
+
+		req := ports.GetAnalyticStatRequest{
+			Alias: stat.Alias,
+		}
+		resp, err := service.Get(ctx, req)
+		if err != nil {
+			if errs.IsNotFound(err) {
+				t.Fatalf("expected no error, got %+v", err)
+			}
+			t.Skipf("get analytic failed: %+v", err)
+		}
+
+		expected := stat
+		got := resp.AnalyticStat
+		if !cmp.Equal(expected, got, cmpopts.EquateApproxTime(time.Second)) {
+			t.Errorf("expected %+v, got %+v, diff %+v", expected, got, cmp.Diff(expected, got))
+		}
+	})
 }

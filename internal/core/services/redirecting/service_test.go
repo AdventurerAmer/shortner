@@ -2,89 +2,111 @@ package redirecting
 
 import (
 	"context"
-	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/AdventurerAmer/shortner/config"
 	"github.com/AdventurerAmer/shortner/internal/core/domain"
 	"github.com/AdventurerAmer/shortner/internal/core/ports"
 	"github.com/AdventurerAmer/shortner/internal/repos/urlmapping"
 	"github.com/AdventurerAmer/shortner/snowflake"
 	"github.com/AdventurerAmer/shortner/test"
+	gocql "github.com/apache/cassandra-gocql-driver/v2"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/uuid"
+	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/modules/cassandra"
 )
 
-var testCtx *test.Cassandra
+// var testCtx *test.Cassandra
 
-func TestMain(m *testing.M) {
-	var err error
-	testCtx, err = test.NewCassandraTestContext()
+// func TestMain(m *testing.M) {
+// 	var err error
+// 	testCtx, err = test.NewCassandraTestContext()
+// 	if err != nil {
+// 		panic(err)
+// 	}
+// 	exitCode := m.Run()
+// 	testCtx.Shutdown()
+// 	os.Exit(exitCode)
+// }
+
+func TestRedirectingService_CassandraRepo(t *testing.T) {
+	if err := test.ChangeToRootDir(); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := config.Load()
 	if err != nil {
-		panic(err)
-	}
-	exitCode := m.Run()
-	testCtx.Shutdown()
-	os.Exit(exitCode)
-}
-
-func TestRedirectingService_RedirectSucceedsForValidInput(t *testing.T) {
-	repo := createRepo(t)
-	service := createService(t)
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-
-	shard := "sa"
-	idGenerator := snowflake.New(shard)
-
-	m := &domain.URLMapping{
-		Alias:     idGenerator.Next(),
-		LongURL:   "www.example.com/examples",
-		CreatedAt: time.Now().UTC(),
-		UserId:    uuid.NewString(),
+		t.Fatal(err)
 	}
 
-	if err := repo.Create(ctx, m); err != nil {
-		t.Skipf("failed to create url mapping: %+v", err)
-	}
-
-	t.Cleanup(func() {
-		dctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		defer cancel()
-		repo.Delete(dctx, m.Alias)
-	})
-
-	req := ports.RedirectRequest{
-		Alias: m.Alias,
-	}
-	resp, err := service.Redirect(ctx, req)
+	ctx := context.Background()
+	ctr, err := cassandra.Run(ctx,
+		"cassandra:5.0.8",
+		// TODO: hardcoding migrations files for now...
+		cassandra.WithInitScripts(
+			filepath.Join("internal", "migrations", "cassandra", "001_create_shortner_keyspace.cql"),
+			filepath.Join("internal", "migrations", "cassandra", "002_create_url_mapping_table.cql"),
+		),
+	)
 	if err != nil {
-		t.Errorf("expected no error, got %+v", err)
+		t.Fatal(err)
 	}
-
-	expected := m.LongURL
-	got := resp.LongURL
-
-	if !cmp.Equal(expected, got, cmpopts.EquateApproxTime(time.Second)) {
-		t.Errorf("expected %+v, got %+v, diff %+v", expected, got, cmp.Diff(expected, got))
+	testcontainers.CleanupContainer(t, ctr)
+	host, err := ctr.ConnectionHost(ctx)
+	if err != nil {
+		t.Fatal(err)
 	}
-}
+	cluster := gocql.NewCluster(host)
+	session, err := cluster.CreateSession()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer session.Close()
 
-func createRepo(t *testing.T) ports.URLMappingRepository {
-	t.Helper()
-	URLMappingRepo := urlmapping.NewCassandra(testCtx.Cassandra.Session, testCtx.Keyspace, ports.NewCacheStub())
-	return URLMappingRepo
-}
+	keyspace := cfg.Infrastructure.Cassandra.Keyspace
+	repo := urlmapping.NewCassandra(session, keyspace, ports.NewCacheStub())
 
-func createService(t *testing.T) ports.RedirectingService {
-	t.Helper()
-	repo := createRepo(t)
-	cfg := Config{
+	srvCfg := Config{
 		URLMappingRepo: repo,
 	}
-	return &service{
-		Config: cfg,
+	service := &service{
+		Config: srvCfg,
 	}
+	t.Run("RedirectSucceedsForValidInput", func(t *testing.T) {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+
+		shard := "sa"
+		idGenerator := snowflake.New(shard)
+
+		m := &domain.URLMapping{
+			Alias:     idGenerator.Next(),
+			LongURL:   "www.example.com/examples",
+			CreatedAt: time.Now().UTC(),
+			UserId:    uuid.NewString(),
+		}
+
+		if err := repo.Create(ctx, m); err != nil {
+			t.Skipf("failed to create url mapping: %+v", err)
+		}
+
+		req := ports.RedirectRequest{
+			Alias: m.Alias,
+		}
+		resp, err := service.Redirect(ctx, req)
+		if err != nil {
+			t.Errorf("expected no error, got %+v", err)
+		}
+
+		expected := m.LongURL
+		got := resp.LongURL
+
+		if !cmp.Equal(expected, got, cmpopts.EquateApproxTime(time.Second)) {
+			t.Errorf("expected %+v, got %+v, diff %+v", expected, got, cmp.Diff(expected, got))
+		}
+	})
 }
