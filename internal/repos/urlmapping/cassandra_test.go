@@ -2,14 +2,16 @@ package urlmapping
 
 import (
 	"context"
-	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/AdventurerAmer/shortner/apps/migrator"
 	"github.com/AdventurerAmer/shortner/config"
 	"github.com/AdventurerAmer/shortner/errs"
+	"github.com/AdventurerAmer/shortner/infra"
 	"github.com/AdventurerAmer/shortner/internal/core/domain"
 	"github.com/AdventurerAmer/shortner/internal/core/ports"
+	"github.com/AdventurerAmer/shortner/logging"
 	"github.com/AdventurerAmer/shortner/test"
 	gocql "github.com/apache/cassandra-gocql-driver/v2"
 	"github.com/google/go-cmp/cmp"
@@ -31,15 +33,10 @@ func TestCassandraURLMappingRepo(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	logger := logging.New(cfg)
+
 	ctx := context.Background()
-	ctr, err := cassandra.Run(ctx,
-		"cassandra:5.0.8",
-		// TODO: hardcoding migrations files for now...
-		cassandra.WithInitScripts(
-			filepath.Join("internal", "migrations", "cassandra", "001_create_shortner_keyspace.cql"),
-			filepath.Join("internal", "migrations", "cassandra", "002_create_url_mapping_table.cql"),
-		),
-	)
+	ctr, err := cassandra.Run(ctx, "cassandra:5.0.8")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,6 +51,19 @@ func TestCassandraURLMappingRepo(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer session.Close()
+
+	cassandra := &infra.Cassandra{
+		Session: session,
+	}
+
+	glob := "internal/migrations/cassandra/*.cql"
+	app, err := migrator.New(logger, cassandra)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := app.Run(ctx, glob); err != nil {
+		t.Fatal(err)
+	}
 
 	keyspace := cfg.Infrastructure.Cassandra.Keyspace
 	repo := NewCassandra(session, keyspace, ports.NewCacheStub())

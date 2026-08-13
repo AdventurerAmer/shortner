@@ -2,9 +2,11 @@ package infra
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/AdventurerAmer/shortner/config"
+	"github.com/AdventurerAmer/shortner/errs"
 	gocql "github.com/apache/cassandra-gocql-driver/v2"
 )
 
@@ -42,5 +44,15 @@ func ConnectToCassandra(ctx context.Context, cfg *config.CassandraConfig) (Cassa
 
 func CloseCassandra(ctx context.Context, cassandra Cassandra) error {
 	cassandra.Session.Close()
+	return nil
+}
+
+func (c *Cassandra) Execute(ctx context.Context, query string) error {
+	if err := c.Session.Query(query).ExecContext(ctx); err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			return errs.NewTimeout(err)
+		}
+		return fmt.Errorf("'session.Query' failed: %w", err)
+	}
 	return nil
 }

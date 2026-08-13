@@ -6,10 +6,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/AdventurerAmer/shortner/apps/migrator"
 	"github.com/AdventurerAmer/shortner/config"
 	"github.com/AdventurerAmer/shortner/errs"
+	"github.com/AdventurerAmer/shortner/infra"
 	"github.com/AdventurerAmer/shortner/internal/core/domain"
 	"github.com/AdventurerAmer/shortner/internal/core/ports"
+	"github.com/AdventurerAmer/shortner/logging"
 	"github.com/AdventurerAmer/shortner/snowflake"
 	"github.com/AdventurerAmer/shortner/test"
 	"github.com/ClickHouse/clickhouse-go/v2"
@@ -31,6 +34,8 @@ func TestClickhouseAnalyticRepo(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	logger := logging.New(cfg)
 
 	ctx := context.Background()
 
@@ -66,6 +71,18 @@ func TestClickhouseAnalyticRepo(t *testing.T) {
 	defer conn.Close()
 
 	if err := conn.Ping(ctx); err != nil {
+		t.Fatal(err)
+	}
+
+	clickHouse := &infra.ClickHouse{
+		Conn: conn,
+	}
+	glob := "internal/migrations/clickhouse/*.sql"
+	app, err := migrator.New(logger, clickHouse)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := app.Run(ctx, glob); err != nil {
 		t.Fatal(err)
 	}
 

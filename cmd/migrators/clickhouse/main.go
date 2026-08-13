@@ -2,19 +2,17 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"os"
-	"path/filepath"
-	"strings"
+	"os/signal"
+	"syscall"
 	"time"
 
+	"github.com/AdventurerAmer/shortner/apps/migrator"
 	"github.com/AdventurerAmer/shortner/config"
-	"github.com/AdventurerAmer/shortner/errs"
 	"github.com/AdventurerAmer/shortner/infra"
 	"github.com/AdventurerAmer/shortner/logging"
-	"github.com/ClickHouse/clickhouse-go/v2"
 )
 
 func main() {
@@ -36,48 +34,19 @@ func main() {
 	}
 	defer infra.CloseClickHouse(context.TODO(), clickHouse)
 
-	path := "internal/migrations/clickhouse" // TODO: hardcoding path
-	if err := runMigrations(context.TODO(), clickHouse.Conn, path, logger); err != nil {
-		logger.Error("migrations failed", "error", err)
-		os.Exit(1)
-	}
-}
+	logger.Info("Connected to Clickhouse")
 
-func runMigrations(ctx context.Context, conn clickhouse.Conn, path string, logger *logging.Logger) error {
-	files, err := filepath.Glob(filepath.Join(path, "*.sql"))
-	if err != nil {
-		return fmt.Errorf("'filepath.Glob' failed: %w", err)
-	}
-	for _, file := range files {
-		content, err := os.ReadFile(file)
-		if err != nil {
-			return fmt.Errorf("'os.ReadFile' failed %s: %w", file, err)
-		}
-		queries := strings.Split(string(content), ";")
-		for _, query := range queries {
-			q := strings.TrimSpace(query)
-			if q == "" || strings.HasPrefix(query, "--") || strings.HasPrefix(query, "//") {
-				continue
-			}
-			logger.Info("Executing Query", "file", file)
-			if err := execQuery(ctx, conn, q); err != nil {
-				return fmt.Errorf("'execQuery' failed %q: %w", q, err)
-			}
-		}
-	}
-	return nil
-}
-
-func execQuery(ctx context.Context, conn clickhouse.Conn, query string) error {
-	dctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	sigCtx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
-	if err := conn.Exec(dctx, query); err != nil {
-		if errors.Is(err, context.DeadlineExceeded) {
-			return errs.NewTimeout(err)
-		}
-		return fmt.Errorf("'conn.Exec' failed %s: %w", query, err)
+	glob := "internal/migrations/clickhouse/*.sql"
+	app, err := migrator.New(logger, &clickHouse)
+	if err != nil {
+		logger.Error("'migrator.New' failed", "error", err)
+		os.Exit(1)
 	}
-
-	return nil
+	if err := app.Run(sigCtx, glob); err != nil {
+		logger.Error("'app.Run' failed", "error", err)
+		os.Exit(1)
+	}
 }

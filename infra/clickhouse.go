@@ -2,9 +2,11 @@ package infra
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/AdventurerAmer/shortner/config"
+	"github.com/AdventurerAmer/shortner/errs"
 	"github.com/ClickHouse/clickhouse-go/v2"
 )
 
@@ -59,4 +61,14 @@ func CloseClickHouse(ctx context.Context, clickHouse ClickHouse) error {
 	case err := <-errCh:
 		return err
 	}
+}
+
+func (ch *ClickHouse) Execute(ctx context.Context, query string) error {
+	if err := ch.Conn.Exec(ctx, query); err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			return errs.NewTimeout(err)
+		}
+		return fmt.Errorf("'Conn.Exec' failed %s: %w", query, err)
+	}
+	return nil
 }
