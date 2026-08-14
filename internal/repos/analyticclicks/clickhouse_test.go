@@ -9,18 +9,14 @@ import (
 
 	"github.com/AdventurerAmer/shortner/config"
 	"github.com/AdventurerAmer/shortner/errs"
-	"github.com/AdventurerAmer/shortner/infra"
 	"github.com/AdventurerAmer/shortner/internal/core/domain"
 	"github.com/AdventurerAmer/shortner/internal/core/ports"
 	"github.com/AdventurerAmer/shortner/logging"
 	"github.com/AdventurerAmer/shortner/snowflake"
 	"github.com/AdventurerAmer/shortner/test"
-	"github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/uuid"
-	"github.com/testcontainers/testcontainers-go"
-	testClickhouse "github.com/testcontainers/testcontainers-go/modules/clickhouse"
 )
 
 func TestClickhouseAnalyticRepo(t *testing.T) {
@@ -38,45 +34,13 @@ func TestClickhouseAnalyticRepo(t *testing.T) {
 	logger := logging.New(cfg)
 	ctx := logging.Set(context.Background(), logger)
 
-	user, password, dbname := "clickhouse", "password", "default"
-
-	ctr, err := testClickhouse.Run(ctx, "clickhouse/clickhouse-server:25.8",
-		testClickhouse.WithUsername(user),
-		testClickhouse.WithPassword(password),
-		testClickhouse.WithDatabase(dbname),
-	)
-	testcontainers.CleanupContainer(t, ctr)
-
-	connStr, err := ctr.ConnectionString(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	options, err := clickhouse.ParseDSN(connStr)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	conn, err := clickhouse.Open(options)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer conn.Close()
-
-	if err := conn.Ping(ctx); err != nil {
-		t.Fatal(err)
-	}
-
-	clickHouse := &infra.ClickHouse{
-		Conn: conn,
-	}
-
-	if err := clickhouseMigratorV1.Run(ctx, clickHouse); err != nil {
+	clickHouse := test.ClickHouse(ctx, t)
+	if err := clickhouseMigratorV1.Run(ctx, &clickHouse); err != nil {
 		t.Fatal(err)
 	}
 
 	database := cfg.Infrastructure.ClickHouse.Database
-	repo := NewClickHouse(database, conn, ports.NewCacheStub(), time.Second)
+	repo := NewClickHouse(database, clickHouse.Conn, ports.NewCacheStub(), time.Second)
 
 	t.Run("GetSucceedsForValidInput", func(t *testing.T) {
 		t.Parallel()

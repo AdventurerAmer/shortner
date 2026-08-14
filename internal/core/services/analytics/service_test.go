@@ -8,18 +8,14 @@ import (
 	clickhouseMigratorV1 "github.com/AdventurerAmer/shortner/cmd/migrators/clickhouse/v1"
 	"github.com/AdventurerAmer/shortner/config"
 	"github.com/AdventurerAmer/shortner/errs"
-	"github.com/AdventurerAmer/shortner/infra"
 	"github.com/AdventurerAmer/shortner/internal/core/domain"
 	"github.com/AdventurerAmer/shortner/internal/core/ports"
 	"github.com/AdventurerAmer/shortner/internal/repos/analyticclicks"
 	"github.com/AdventurerAmer/shortner/snowflake"
 	"github.com/AdventurerAmer/shortner/test"
-	"github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/uuid"
-	"github.com/testcontainers/testcontainers-go"
-	testClickhouse "github.com/testcontainers/testcontainers-go/modules/clickhouse"
 )
 
 func TestAnalyticsService_ClickHouseRepo(t *testing.T) {
@@ -36,46 +32,17 @@ func TestAnalyticsService_ClickHouseRepo(t *testing.T) {
 
 	ctx := context.Background()
 
-	user, password, dbname := "clickhouse", "password", "default"
-
-	ctr, err := testClickhouse.Run(ctx,
-		"clickhouse/clickhouse-server:25.8",
-		testClickhouse.WithUsername(user),
-		testClickhouse.WithPassword(password),
-		testClickhouse.WithDatabase(dbname),
-	)
-	testcontainers.CleanupContainer(t, ctr)
-
-	connStr, err := ctr.ConnectionString(ctx)
-	if err != nil {
+	clickHouse := test.ClickHouse(ctx, t)
+	if err := clickhouseMigratorV1.Run(ctx, &clickHouse); err != nil {
 		t.Fatal(err)
 	}
 
-	options, err := clickhouse.ParseDSN(connStr)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	conn, err := clickhouse.Open(options)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer conn.Close()
-
-	if err := conn.Ping(ctx); err != nil {
-		t.Fatal(err)
-	}
-
-	clickHouse := &infra.ClickHouse{
-		Conn: conn,
-	}
-
-	if err := clickhouseMigratorV1.Run(ctx, clickHouse); err != nil {
+	if err := clickhouseMigratorV1.Run(ctx, &clickHouse); err != nil {
 		t.Fatal(err)
 	}
 
 	database := cfg.Infrastructure.ClickHouse.Database
-	repo := analyticclicks.NewClickHouse(database, conn, ports.NewCacheStub(), time.Second)
+	repo := analyticclicks.NewClickHouse(database, clickHouse.Conn, ports.NewCacheStub(), time.Second)
 
 	srvCfg := Config{
 		AnalyticStatRepo: repo,

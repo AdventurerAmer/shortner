@@ -11,14 +11,10 @@ import (
 	"github.com/AdventurerAmer/shortner/infra"
 	"github.com/AdventurerAmer/shortner/internal/core/domain"
 	"github.com/AdventurerAmer/shortner/internal/core/ports"
-	"github.com/AdventurerAmer/shortner/logging"
 	"github.com/AdventurerAmer/shortner/test"
-	gocql "github.com/apache/cassandra-gocql-driver/v2"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/uuid"
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/modules/cassandra"
 )
 
 func TestCassandraURLMappingRepo(t *testing.T) {
@@ -33,35 +29,16 @@ func TestCassandraURLMappingRepo(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	logger := logging.New(cfg)
-	ctx := logging.Set(context.Background(), logger)
+	ctx := context.Background()
+	cassandra := test.Cassandra(ctx, t)
+	defer infra.CloseCassandra(context.Background(), cassandra)
 
-	ctr, err := cassandra.Run(ctx, "cassandra:5.0.8")
-	if err != nil {
-		t.Fatal(err)
-	}
-	testcontainers.CleanupContainer(t, ctr)
-	host, err := ctr.ConnectionHost(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	cluster := gocql.NewCluster(host)
-	session, err := cluster.CreateSession()
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer session.Close()
-
-	cassandra := &infra.Cassandra{
-		Session: session,
-	}
-
-	if err := cassandraMigratorV1.Run(ctx, cassandra); err != nil {
+	if err := cassandraMigratorV1.Run(ctx, &cassandra); err != nil {
 		t.Fatal(err)
 	}
 
 	keyspace := cfg.Infrastructure.Cassandra.Keyspace
-	repo := NewCassandra(session, keyspace, ports.NewCacheStub())
+	repo := NewCassandra(cassandra.Session, keyspace, ports.NewCacheStub())
 
 	exampleURL := "www.example.com/examples"
 
