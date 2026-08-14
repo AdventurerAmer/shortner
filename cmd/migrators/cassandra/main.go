@@ -9,7 +9,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/AdventurerAmer/shortner/apps/migrator"
+	cassandraMigratorV1 "github.com/AdventurerAmer/shortner/cmd/migrators/cassandra/v1"
 	"github.com/AdventurerAmer/shortner/config"
 	"github.com/AdventurerAmer/shortner/infra"
 	"github.com/AdventurerAmer/shortner/logging"
@@ -39,14 +39,9 @@ func main() {
 	sigCtx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
-	glob := "internal/migrations/cassandra/*.cql"
-	app, err := migrator.New(logger, &cassandra)
-	if err != nil {
-		logger.Error("'migrator.New' failed", "error", err)
-		os.Exit(1)
-	}
-	if err := app.Run(sigCtx, glob); err != nil {
-		logger.Error("'app.Run' failed", "error", err)
+	dctx := logging.Set(sigCtx, logger)
+	if err := cassandraMigratorV1.Run(dctx, &cassandra); err != nil {
+		logger.Error("'cassandraMigratorV1.Run' failed", "error", err)
 		os.Exit(1)
 	}
 }

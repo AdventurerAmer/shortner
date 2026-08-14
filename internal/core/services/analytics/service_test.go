@@ -2,12 +2,13 @@ package analytics
 
 import (
 	"context"
-	"path/filepath"
 	"testing"
 	"time"
 
+	clickhouseMigratorV1 "github.com/AdventurerAmer/shortner/cmd/migrators/clickhouse/v1"
 	"github.com/AdventurerAmer/shortner/config"
 	"github.com/AdventurerAmer/shortner/errs"
+	"github.com/AdventurerAmer/shortner/infra"
 	"github.com/AdventurerAmer/shortner/internal/core/domain"
 	"github.com/AdventurerAmer/shortner/internal/core/ports"
 	"github.com/AdventurerAmer/shortner/internal/repos/analyticclicks"
@@ -35,18 +36,13 @@ func TestAnalyticsService_ClickHouseRepo(t *testing.T) {
 
 	ctx := context.Background()
 
-	user, password, dbname := "clickhouse", "password", "testdb"
+	user, password, dbname := "clickhouse", "password", "default"
 
 	ctr, err := testClickhouse.Run(ctx,
 		"clickhouse/clickhouse-server:25.8",
 		testClickhouse.WithUsername(user),
 		testClickhouse.WithPassword(password),
 		testClickhouse.WithDatabase(dbname),
-		// TODO: hardcoding migrations files for now
-		testClickhouse.WithInitScripts(
-			filepath.Join("internal", "migrations", "clickhouse", "001_create_clicks_table.sql"),
-			filepath.Join("internal", "migrations", "clickhouse", "002_create_clicks_table_view.sql"),
-		),
 	)
 	testcontainers.CleanupContainer(t, ctr)
 
@@ -67,6 +63,14 @@ func TestAnalyticsService_ClickHouseRepo(t *testing.T) {
 	defer conn.Close()
 
 	if err := conn.Ping(ctx); err != nil {
+		t.Fatal(err)
+	}
+
+	clickHouse := &infra.ClickHouse{
+		Conn: conn,
+	}
+
+	if err := clickhouseMigratorV1.Run(ctx, clickHouse); err != nil {
 		t.Fatal(err)
 	}
 

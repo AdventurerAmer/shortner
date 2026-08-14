@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/AdventurerAmer/shortner/apps/migrator"
+	cassandraMigratorV1 "github.com/AdventurerAmer/shortner/cmd/migrators/cassandra/v1"
 	"github.com/AdventurerAmer/shortner/config"
 	"github.com/AdventurerAmer/shortner/errs"
 	"github.com/AdventurerAmer/shortner/infra"
@@ -34,8 +34,8 @@ func TestCassandraURLMappingRepo(t *testing.T) {
 	}
 
 	logger := logging.New(cfg)
+	ctx := logging.Set(context.Background(), logger)
 
-	ctx := context.Background()
 	ctr, err := cassandra.Run(ctx, "cassandra:5.0.8")
 	if err != nil {
 		t.Fatal(err)
@@ -56,12 +56,7 @@ func TestCassandraURLMappingRepo(t *testing.T) {
 		Session: session,
 	}
 
-	glob := "internal/migrations/cassandra/*.cql"
-	app, err := migrator.New(logger, cassandra)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := app.Run(ctx, glob); err != nil {
+	if err := cassandraMigratorV1.Run(ctx, cassandra); err != nil {
 		t.Fatal(err)
 	}
 

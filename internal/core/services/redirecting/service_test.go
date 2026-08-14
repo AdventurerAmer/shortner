@@ -2,11 +2,12 @@ package redirecting
 
 import (
 	"context"
-	"path/filepath"
 	"testing"
 	"time"
 
+	cassandraMigratorV1 "github.com/AdventurerAmer/shortner/cmd/migrators/cassandra/v1"
 	"github.com/AdventurerAmer/shortner/config"
+	"github.com/AdventurerAmer/shortner/infra"
 	"github.com/AdventurerAmer/shortner/internal/core/domain"
 	"github.com/AdventurerAmer/shortner/internal/core/ports"
 	"github.com/AdventurerAmer/shortner/internal/repos/urlmapping"
@@ -20,19 +21,6 @@ import (
 	"github.com/testcontainers/testcontainers-go/modules/cassandra"
 )
 
-// var testCtx *test.Cassandra
-
-// func TestMain(m *testing.M) {
-// 	var err error
-// 	testCtx, err = test.NewCassandraTestContext()
-// 	if err != nil {
-// 		panic(err)
-// 	}
-// 	exitCode := m.Run()
-// 	testCtx.Shutdown()
-// 	os.Exit(exitCode)
-// }
-
 func TestRedirectingService_CassandraRepo(t *testing.T) {
 	if err := test.ChangeToRootDir(); err != nil {
 		t.Fatal(err)
@@ -44,14 +32,7 @@ func TestRedirectingService_CassandraRepo(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	ctr, err := cassandra.Run(ctx,
-		"cassandra:5.0.8",
-		// TODO: hardcoding migrations files for now...
-		cassandra.WithInitScripts(
-			filepath.Join("internal", "migrations", "cassandra", "001_create_shortner_keyspace.cql"),
-			filepath.Join("internal", "migrations", "cassandra", "002_create_url_mapping_table.cql"),
-		),
-	)
+	ctr, err := cassandra.Run(ctx, "cassandra:5.0.8")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,6 +47,14 @@ func TestRedirectingService_CassandraRepo(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer session.Close()
+
+	cassandra := &infra.Cassandra{
+		Session: session,
+	}
+
+	if err := cassandraMigratorV1.Run(ctx, cassandra); err != nil {
+		t.Fatal(err)
+	}
 
 	keyspace := cfg.Infrastructure.Cassandra.Keyspace
 	repo := urlmapping.NewCassandra(session, keyspace, ports.NewCacheStub())

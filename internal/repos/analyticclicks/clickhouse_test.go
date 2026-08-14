@@ -2,11 +2,11 @@ package analyticclicks
 
 import (
 	"context"
-	"path/filepath"
 	"testing"
 	"time"
 
-	"github.com/AdventurerAmer/shortner/apps/migrator"
+	clickhouseMigratorV1 "github.com/AdventurerAmer/shortner/cmd/migrators/clickhouse/v1"
+
 	"github.com/AdventurerAmer/shortner/config"
 	"github.com/AdventurerAmer/shortner/errs"
 	"github.com/AdventurerAmer/shortner/infra"
@@ -36,21 +36,14 @@ func TestClickhouseAnalyticRepo(t *testing.T) {
 	}
 
 	logger := logging.New(cfg)
+	ctx := logging.Set(context.Background(), logger)
 
-	ctx := context.Background()
+	user, password, dbname := "clickhouse", "password", "default"
 
-	user, password, dbname := "clickhouse", "password", "testdb"
-
-	ctr, err := testClickhouse.Run(ctx,
-		"clickhouse/clickhouse-server:25.8",
+	ctr, err := testClickhouse.Run(ctx, "clickhouse/clickhouse-server:25.8",
 		testClickhouse.WithUsername(user),
 		testClickhouse.WithPassword(password),
 		testClickhouse.WithDatabase(dbname),
-		// TODO: hardcoding migrations files for now
-		testClickhouse.WithInitScripts(
-			filepath.Join("internal", "migrations", "clickhouse", "001_create_clicks_table.sql"),
-			filepath.Join("internal", "migrations", "clickhouse", "002_create_clicks_table_view.sql"),
-		),
 	)
 	testcontainers.CleanupContainer(t, ctr)
 
@@ -77,12 +70,8 @@ func TestClickhouseAnalyticRepo(t *testing.T) {
 	clickHouse := &infra.ClickHouse{
 		Conn: conn,
 	}
-	glob := "internal/migrations/clickhouse/*.sql"
-	app, err := migrator.New(logger, clickHouse)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := app.Run(ctx, glob); err != nil {
+
+	if err := clickhouseMigratorV1.Run(ctx, clickHouse); err != nil {
 		t.Fatal(err)
 	}
 
