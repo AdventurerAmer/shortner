@@ -10,11 +10,11 @@ import (
 	"github.com/ClickHouse/clickhouse-go/v2"
 )
 
-type ClickHouse struct {
-	Conn clickhouse.Conn
+type clickHouseConfigWrapper struct {
+	config.ClickHouseConfig
 }
 
-func ConnectClickHouse(ctx context.Context, cfg *config.ClickHouseConfig) (ClickHouse, error) {
+func (cfg *clickHouseConfigWrapper) Connect(ctx context.Context) (Disconnecter, error) {
 	type result struct {
 		clickHouse ClickHouse
 		err        error
@@ -41,16 +41,20 @@ func ConnectClickHouse(ctx context.Context, cfg *config.ClickHouseConfig) (Click
 	}()
 	select {
 	case <-ctx.Done():
-		return ClickHouse{}, ctx.Err()
+		return nil, ctx.Err()
 	case res := <-ch:
-		return res.clickHouse, res.err
+		return &res.clickHouse, res.err
 	}
 }
 
-func CloseClickHouse(ctx context.Context, clickHouse ClickHouse) error {
+type ClickHouse struct {
+	Conn clickhouse.Conn
+}
+
+func (ch *ClickHouse) Disconnect(ctx context.Context) error {
 	errCh := make(chan error)
 	go func() {
-		if err := clickHouse.Conn.Close(); err != nil {
+		if err := ch.Conn.Close(); err != nil {
 			errCh <- fmt.Errorf("'Conn.Close' failed: %w", err)
 		}
 		errCh <- nil

@@ -28,15 +28,23 @@ func Run() int {
 	groupId := "clicks"
 	logger := logging.New(cfg).With(slog.String("worker", groupId))
 
-	clickHouse, err := infra.ConnectClickHouse(context.TODO(), &cfg.Infrastructure.ClickHouse)
+	var clickHouseCtx infra.ClickHouse
+
+	inf, err := infra.New()
 	if err != nil {
-		logger.Error("clickhouse connection failed", "error", err)
+		logger.Error("'infra.New()' failed", "error", err)
 		return 1
 	}
-	defer infra.CloseClickHouse(context.TODO(), clickHouse)
+	inf.BindClickHouse(cfg.Infrastructure.ClickHouse, &clickHouseCtx)
+
+	if err := inf.Start(context.Background()); err != nil {
+		logger.Error("infrastructure connection failed", "error", err)
+		return 1
+	}
+	defer inf.Shutdown(context.Background())
 
 	analyticClicksRepo := analyticclicks.NewClickHouse(
-		cfg.Infrastructure.ClickHouse.Database, clickHouse.Conn, ports.NewCacheStub(), time.Second)
+		cfg.Infrastructure.ClickHouse.Database, clickHouseCtx.Conn, ports.NewCacheStub(), time.Second)
 
 	reader := infra.NewKafkaReader(cfg.Infrastructure.Kafka, domain.ClicksBatchTopic, groupId)
 	defer func() {

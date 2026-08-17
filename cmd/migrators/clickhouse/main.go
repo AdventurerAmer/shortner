@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	clickhouseMigratorV1 "github.com/AdventurerAmer/shortner/cmd/migrators/clickhouse/v1"
 	"github.com/AdventurerAmer/shortner/config"
@@ -24,23 +23,26 @@ func main() {
 
 	logger := logging.New(cfg).With(slog.String("migrator", "clickHouse"))
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
+	var clickHouseCtx infra.ClickHouse
 
-	clickHouse, err := infra.ConnectClickHouse(ctx, &cfg.Infrastructure.ClickHouse)
+	inf, err := infra.New()
 	if err != nil {
-		logger.Error("clickhouse connection failed", "error", err)
+		logger.Error("'infra.New()' failed", "error", err)
 		os.Exit(1)
 	}
-	defer infra.CloseClickHouse(context.TODO(), clickHouse)
+	inf.BindClickHouse(cfg.Infrastructure.ClickHouse, &clickHouseCtx)
 
-	logger.Info("Connected to Clickhouse")
+	if err := inf.Start(context.Background()); err != nil {
+		logger.Error("infrastructure connection failed", "error", err)
+		os.Exit(1)
+	}
+	defer inf.Shutdown(context.Background())
 
 	sigCtx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
 	dctx := logging.Set(sigCtx, logger)
-	if err := clickhouseMigratorV1.Run(dctx, &clickHouse); err != nil {
+	if err := clickhouseMigratorV1.Run(dctx, &clickHouseCtx); err != nil {
 		logger.Error("'clickhouseMigratorV1.Run' failed", "error", err)
 		os.Exit(1)
 	}

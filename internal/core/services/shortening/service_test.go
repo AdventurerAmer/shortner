@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/AdventurerAmer/shortner/config"
-	"github.com/AdventurerAmer/shortner/infra"
 	"github.com/AdventurerAmer/shortner/internal/core/ports"
 	"github.com/AdventurerAmer/shortner/internal/repos/urlmapping"
 	"github.com/AdventurerAmer/shortner/snowflake"
@@ -32,7 +31,7 @@ func TestShorteningService_CassandraRepo(t *testing.T) {
 
 	ctx := context.Background()
 	cassandra := test.Cassandra(ctx, t)
-	defer infra.CloseCassandra(context.Background(), cassandra)
+	defer cassandra.Disconnect(context.Background())
 
 	if err := cassandraMigratorV1.Run(ctx, &cassandra); err != nil {
 		t.Fatal(err)

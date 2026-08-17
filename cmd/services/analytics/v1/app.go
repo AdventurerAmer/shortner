@@ -26,31 +26,29 @@ func Run() int {
 	serviceCfg := &cfg.Services.Analytics
 	logger := logging.New(cfg).With(slog.String("service", serviceCfg.Name))
 
-	cassandra, err := infra.ConnectToCassandra(context.TODO(), &cfg.Infrastructure.Cassandra)
+	var (
+		redisCtx      infra.Redis
+		clickHouseCtx infra.ClickHouse
+	)
+
+	inf, err := infra.New()
 	if err != nil {
-		logger.Error("cassandra connection failed", "error", err)
+		logger.Error("'infra.New()' failed", "error", err)
 		return 1
 	}
-	defer infra.CloseCassandra(context.TODO(), cassandra)
+	inf.BindRedis(cfg.Infrastructure.RedisAnalytics, &redisCtx)
+	inf.BindClickHouse(cfg.Infrastructure.ClickHouse, &clickHouseCtx)
 
-	redisCtx, err := infra.ConnectToRedis(context.TODO(), &cfg.Infrastructure.RedisAnalytics)
-	if err != nil {
-		logger.Error("redis connection failed", "error", err)
+	if err := inf.Start(context.Background()); err != nil {
+		logger.Error("infrastructure connection failed", "error", err)
 		return 1
 	}
-	defer infra.CloseRedis(context.TODO(), redisCtx)
-
-	clickHouse, err := infra.ConnectClickHouse(context.TODO(), &cfg.Infrastructure.ClickHouse)
-	if err != nil {
-		logger.Error("clickhouse connection failed", "error", err)
-		os.Exit(1)
-	}
-	defer infra.CloseClickHouse(context.TODO(), clickHouse)
+	defer inf.Shutdown(context.Background())
 
 	redisCache := caches.NewRedis(redisCtx.Client)
 
 	analyticClicksRepo := analyticclicks.NewClickHouse(
-		cfg.Infrastructure.ClickHouse.Database, clickHouse.Conn, redisCache, time.Second)
+		cfg.Infrastructure.ClickHouse.Database, clickHouseCtx.Conn, redisCache, time.Second)
 
 	analyticsCfg := analytics.Config{
 		AnalyticStatRepo: analyticClicksRepo,

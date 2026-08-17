@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	cassandraMigratorV1 "github.com/AdventurerAmer/shortner/cmd/migrators/cassandra/v1"
 	"github.com/AdventurerAmer/shortner/config"
@@ -24,15 +23,20 @@ func main() {
 
 	logger := logging.New(cfg).With(slog.String("migrator", "cassandra"))
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
+	var cassandraCtx infra.Cassandra
 
-	cassandra, err := infra.ConnectToCassandra(ctx, &cfg.Infrastructure.Cassandra)
+	inf, err := infra.New()
 	if err != nil {
-		logger.Error("cassandra connection failed", "error", err)
+		logger.Error("'infra.New()' failed", "error", err)
 		os.Exit(1)
 	}
-	defer infra.CloseCassandra(context.TODO(), cassandra)
+	inf.BindCassandra(cfg.Infrastructure.Cassandra, &cassandraCtx)
+
+	if err := inf.Start(context.Background()); err != nil {
+		logger.Error("infrastructure connection failed", "error", err)
+		os.Exit(1)
+	}
+	defer inf.Shutdown(context.Background())
 
 	logger.Info("Connected to Cassandra")
 
@@ -40,7 +44,7 @@ func main() {
 	defer cancel()
 
 	dctx := logging.Set(sigCtx, logger)
-	if err := cassandraMigratorV1.Run(dctx, &cassandra); err != nil {
+	if err := cassandraMigratorV1.Run(dctx, &cassandraCtx); err != nil {
 		logger.Error("'cassandraMigratorV1.Run' failed", "error", err)
 		os.Exit(1)
 	}

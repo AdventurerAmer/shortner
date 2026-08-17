@@ -8,25 +8,34 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-func ConnectToRedis(ctx context.Context, cfg *config.RedisConfig) (config.Redis, error) {
+type redisConfigWrapper struct {
+	config.RedisConfig
+}
+
+func (cfg *redisConfigWrapper) Connect(ctx context.Context) (Disconnecter, error) {
 	database := 0
 	if cfg.Database != nil {
 		database = *cfg.Database
 	}
+	addr := fmt.Sprintf("%s:%d", cfg.Host, cfg.Port)
 	opts := &redis.Options{
-		Addr:     cfg.Address,
+		Addr:     addr,
 		Username: cfg.Username,
 		Password: cfg.Password,
 		DB:       database,
 	}
 	client := redis.NewClient(opts)
 	if _, err := client.Ping(ctx).Result(); err != nil {
-		return config.Redis{}, fmt.Errorf("'client.Ping' failed: %w", err)
+		return nil, fmt.Errorf("'client.Ping' failed: %w", err)
 	}
-	return config.Redis{Client: client}, nil
+	return &Redis{Client: client}, nil
 }
 
-func CloseRedis(ctx context.Context, r config.Redis) error {
+type Redis struct {
+	Client *redis.Client
+}
+
+func (r *Redis) Disconnect(ctx context.Context) error {
 	errCh := make(chan error)
 	go func() {
 		if err := r.Client.Close(); err != nil {

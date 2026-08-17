@@ -29,24 +29,29 @@ func Run() int {
 	serviceCfg := &cfg.Services.Redirecting
 	logger := logging.New(cfg).With(slog.String("service", serviceCfg.Name))
 
-	cassandra, err := infra.ConnectToCassandra(context.TODO(), &cfg.Infrastructure.Cassandra)
-	if err != nil {
-		logger.Error("cassandra connection failed", "error", err)
-		return 1
-	}
-	defer infra.CloseCassandra(context.TODO(), cassandra)
+	var (
+		redisCtx     infra.Redis
+		cassandraCtx infra.Cassandra
+	)
 
-	redisCtx, err := infra.ConnectToRedis(context.TODO(), &cfg.Infrastructure.Redis)
+	inf, err := infra.New()
 	if err != nil {
-		logger.Error("redis connection failed", "error", err)
+		logger.Error("'infra.New()' failed", "error", err)
 		return 1
 	}
-	defer infra.CloseRedis(context.TODO(), redisCtx)
+	inf.BindRedis(cfg.Infrastructure.RedisAnalytics, &redisCtx)
+	inf.BindCassandra(cfg.Infrastructure.Cassandra, &cassandraCtx)
+
+	if err := inf.Start(context.Background()); err != nil {
+		logger.Error("infrastructure connection failed", "error", err)
+		return 1
+	}
+	defer inf.Shutdown(context.Background())
 
 	redisCache := caches.NewRedis(redisCtx.Client)
 
 	URLMappingRepo := urlmapping.NewCassandra(
-		cassandra.Session,
+		cassandraCtx.Session,
 		cfg.Infrastructure.Cassandra.Keyspace,
 		redisCache)
 

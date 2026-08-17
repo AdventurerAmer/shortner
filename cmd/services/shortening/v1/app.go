@@ -26,19 +26,31 @@ func Run() int {
 	serviceCfg := &cfg.Services.Shortening
 	logger := logging.New(cfg).With(slog.String("service", serviceCfg.Name))
 
-	cassandra, err := infra.ConnectToCassandra(context.TODO(), &cfg.Infrastructure.Cassandra)
+	var cassandraCtx infra.Cassandra
+
+	inf, err := infra.New()
 	if err != nil {
-		logger.Error("cassandra connection failed", "error", err)
+		logger.Error("'infra.New()' failed", "error", err)
 		return 1
 	}
-	defer infra.CloseCassandra(context.TODO(), cassandra)
+	inf.BindCassandra(cfg.Infrastructure.Cassandra, &cassandraCtx)
 
-	urlmappingRepo := urlmapping.NewCassandra(cassandra.Session, cfg.Infrastructure.Cassandra.Keyspace, ports.NewCacheStub())
+	if err := inf.Start(context.Background()); err != nil {
+		logger.Error("infrastructure connection failed", "error", err)
+		return 1
+	}
+	defer inf.Shutdown(context.Background())
+
+	urlmappingRepo := urlmapping.NewCassandra(cassandraCtx.Session, cfg.Infrastructure.Cassandra.Keyspace, ports.NewCacheStub())
 
 	idGenerator := snowflake.New("sa")
+	proto := "https"
+	if cfg.Env == config.EnvLocal {
+		proto = "http"
+	}
+	shortURLPrefix := fmt.Sprintf("%s://%s/", proto, cfg.App.Domain)
 	shorteningCfg := shortening.Config{
-		// TODO: using http here
-		ShortURLPrefix: fmt.Sprintf("http://%s/", cfg.App.Domain),
+		ShortURLPrefix: shortURLPrefix,
 		URLMappingRepo: urlmappingRepo,
 		IdGenerator:    idGenerator,
 	}

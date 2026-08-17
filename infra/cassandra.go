@@ -10,11 +10,11 @@ import (
 	gocql "github.com/apache/cassandra-gocql-driver/v2"
 )
 
-type Cassandra struct {
-	Session *gocql.Session
+type cassandraConfigWrapper struct {
+	config.CassandraConfig
 }
 
-func ConnectToCassandra(ctx context.Context, cfg *config.CassandraConfig) (Cassandra, error) {
+func (cfg *cassandraConfigWrapper) Connect(ctx context.Context) (Disconnecter, error) {
 	type result struct {
 		cassandra Cassandra
 		err       error
@@ -24,6 +24,11 @@ func ConnectToCassandra(ctx context.Context, cfg *config.CassandraConfig) (Cassa
 		cluster := gocql.NewCluster(cfg.Host)
 		cluster.Port = cfg.Port
 		cluster.Consistency = gocql.Quorum
+		cluster.ProtoVersion = 4
+		cluster.Authenticator = gocql.PasswordAuthenticator{
+			Username: cfg.Username,
+			Password: cfg.Password,
+		}
 		session, err := cluster.CreateSession()
 		if err != nil {
 			err = fmt.Errorf("'cluster.CreateSession' failed: %w", err)
@@ -36,14 +41,18 @@ func ConnectToCassandra(ctx context.Context, cfg *config.CassandraConfig) (Cassa
 
 	select {
 	case res := <-ch:
-		return res.cassandra, res.err
+		return &res.cassandra, res.err
 	case <-ctx.Done():
-		return Cassandra{}, ctx.Err()
+		return nil, ctx.Err()
 	}
 }
 
-func CloseCassandra(ctx context.Context, cassandra Cassandra) error {
-	cassandra.Session.Close()
+type Cassandra struct {
+	Session *gocql.Session
+}
+
+func (c *Cassandra) Disconnect(ctx context.Context) error {
+	c.Session.Close()
 	return nil
 }
 

@@ -15,33 +15,3 @@ services:
   analytics:
     name: analytics
     port: 3032
-  
-infrastructure:
-  cassandra:
-    host: localhost
-    port: 9042
-    keyspace: shortner
-    connTimeout: 1s
-  
-  clickhouse:
-    host: localhost
-    port: 9000
-    database: default
-    username: admin
-    password: admin
-  
-  redis:
-    address: localhost:6379
-    username: admin
-    password: admin
-    database: 0
-  
-  redisAnalytics:
-    address: localhost:6380
-    username: admin
-    password: admin
-    database: 0
-  
-  kafka:
-    host: localhost
-    port: 9092
