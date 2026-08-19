@@ -10,6 +10,7 @@ import (
 
 	"github.com/AdventurerAmer/shortner/errs"
 	"github.com/AdventurerAmer/shortner/logging"
+	"github.com/AdventurerAmer/shortner/telemetry"
 )
 
 type Handler = func(c *Context) (any, error)
@@ -78,7 +79,7 @@ func (mux *Mux) composeHTTPHandlerFunc(handler Handler) http.HandlerFunc {
 			status := errs.HTTPStatus(expectedErr.Code)
 			w.WriteHeader(status)
 
-			traceId := GetRequestId(r.Context())
+			traceId := telemetry.GetTraceId(r.Context())
 			resp = errs.NewUserError(traceId, expectedErr)
 		}
 		// We can have nil 'resp' in case of a (302) redirection for-example

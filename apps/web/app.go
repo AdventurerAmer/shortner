@@ -7,27 +7,41 @@ import (
 	"net/http"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/AdventurerAmer/shortner/config"
 	"github.com/AdventurerAmer/shortner/logging"
+	"github.com/AdventurerAmer/shortner/telemetry"
 )
 
 type App struct {
-	cfg    *config.ServiceConfig
-	logger *logging.Logger
+	cfg        *config.Config
+	serviceCfg *config.ServiceConfig
+	logger     *logging.Logger
 }
 
-func New(cfg *config.ServiceConfig, logger *logging.Logger) *App {
+func New(cfg *config.Config, serviceCfg *config.ServiceConfig, logger *logging.Logger) *App {
 	app := &App{
-		cfg:    cfg,
-		logger: logger,
+		cfg:        cfg,
+		serviceCfg: serviceCfg,
+		logger:     logger,
 	}
 	return app
 }
 
-func (app *App) Run(router http.Handler) {
-	cfg := app.cfg
+func (app *App) Run(router http.Handler) error {
+	cfg := app.serviceCfg
 	logger := app.logger
+
+	shutdown, err := telemetry.New(app.cfg, app.serviceCfg.Name, "0.0.1")
+	if err != nil {
+		return fmt.Errorf("'telemetry.New' failed: %w", err)
+	}
+	defer func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		shutdown(ctx)
+	}()
 
 	srv := &http.Server{
 		Addr:              fmt.Sprintf(":%d", cfg.Port),
@@ -55,7 +69,7 @@ func (app *App) Run(router http.Handler) {
 
 	select {
 	case err := <-errCh:
-		logger.Error("'ListenAndServe' failed", "error", err)
+		return err
 	case <-sigCtx.Done():
 		logger.Info("graceful shutdown started")
 		defer logger.Info("graceful shutdown ended")
@@ -64,10 +78,11 @@ func (app *App) Run(router http.Handler) {
 		defer cancel()
 
 		if err := srv.Shutdown(ctx); err != nil {
-			logger.Error("graceful shutdown failed, forcing close", "error", err)
 			if err := srv.Close(); err != nil {
-				logger.Error("server force close failed", "error", err)
+				return err
 			}
 		}
 	}
+
+	return nil
 }

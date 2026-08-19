@@ -15,8 +15,9 @@ type LoggingConfig struct {
 }
 
 type TracingConfig struct {
-	Enabled  bool   `koanf:"enabled"`
-	Endpoint string `koanf:"endpoint" validate:"required,url"`
+	Enabled    bool    `koanf:"enabled"`
+	Endpoint   string  `koanf:"endpoint" validate:"required,url"`
+	SampleRate float64 `koanf:"sampleRate" validate:"required,min=0.0,max=1.0"`
 }
 
 type HealthChecksConfig struct {

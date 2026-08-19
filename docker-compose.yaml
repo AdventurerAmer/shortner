@@ -146,6 +146,25 @@ services:
       timeout: 5s
       retries: 5
 
+  jager:
+    image: jaegertracing/all-in-one:1.72.0
+    ports:
+      - "6831:6831/udp"  # Jaeger agent (UDP, for receiving traces)
+      - "16686:16686"    # Jaeger UI
+      - "14268:14268"    # Jaeger collector (HTTP)
+      - "4317:4317"      # OTLP gRPC receiver
+      - "4318:4318"      # OTLP HTTP receiver
+    environment:
+      - COLLECTOR_ZIPKIN_HOST_PORT=:9411  # Enable Zipkin compatibility
+      - COLLECTOR_OTLP_ENABLED=true       # Enable OpenTelemetry Protocol (OTLP)
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:14268/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+
 volumes:
   cassandra-data:
   clickhouse-data:

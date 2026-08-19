@@ -11,30 +11,23 @@ import (
 	"github.com/AdventurerAmer/shortner/config"
 	"github.com/AdventurerAmer/shortner/errs"
 	"github.com/AdventurerAmer/shortner/logging"
-	"github.com/google/uuid"
+	"github.com/AdventurerAmer/shortner/telemetry"
 )
 
 const RequestIdHeader = "X-Request-ID"
 
-type requestIdCtxKey struct{}
-
-func GetRequestId(ctx context.Context) string {
-	return ctx.Value(requestIdCtxKey{}).(string)
+func Trace(serviceName string) Middleware {
+	return func(next http.HandlerFunc) http.HandlerFunc {
+		return telemetry.NewHttpHandler(next, serviceName).ServeHTTP
+	}
 }
 
-func RequestId(next http.HandlerFunc) http.HandlerFunc {
+func CorrelationId(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		requestId := r.Header.Get(RequestIdHeader)
-		if requestId == "" {
-			requestId = uuid.NewString()
-		}
-		w.Header().Set(RequestIdHeader, requestId)
-
-		rctx := context.WithValue(r.Context(), requestIdCtxKey{}, requestId)
-		logger := logging.Get(rctx).With(slog.String("correlationId", requestId))
-		rctx = logging.Set(rctx, logger)
-
-		next(w, r.WithContext(rctx))
+		traceId := telemetry.GetTraceId(r.Context())
+		logger := logging.Get(r.Context()).With(slog.String("correlationId", traceId))
+		dctx := logging.Set(r.Context(), logger)
+		next(w, r.WithContext(dctx))
 	}
 }
 
