@@ -78,8 +78,9 @@ func (app *App) Run(router http.Handler) error {
 		defer cancel()
 
 		if err := srv.Shutdown(ctx); err != nil {
+			logger.Error("graceful shutdown failed, forcing close", "error", err)
 			if err := srv.Close(); err != nil {
-				return err
+				logger.Error("server force close failed", "error", err)
 			}
 		}
 	}

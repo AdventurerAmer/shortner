@@ -10,6 +10,7 @@ import (
 	"github.com/AdventurerAmer/shortner/internal/core/domain"
 	"github.com/AdventurerAmer/shortner/internal/core/ports"
 	"github.com/AdventurerAmer/shortner/logging"
+	"github.com/AdventurerAmer/shortner/telemetry"
 	gocql "github.com/apache/cassandra-gocql-driver/v2"
 )
 
@@ -24,13 +25,19 @@ func NewCassandra(session *gocql.Session, keyspace string, cache ports.Cache) po
 }
 
 func (repo *cassandraRepo) Create(ctx context.Context, m *domain.URLMapping) error {
+	dctx, span := telemetry.NewSpan(ctx, "Cassandra URL Mapping Repo: Create",
+		telemetry.StrAttr("longURL", m.LongURL))
+	defer span.End()
+
 	stmt := fmt.Sprintf(
 		`INSERT INTO 
 		 %s.url_mappings (alias, long_url, created_at, user_id)
 		 VALUES (?, ?, ?, ?)`, repo.keyspace)
 
 	q := repo.session.Query(stmt, m.Alias, m.LongURL, m.CreatedAt, m.UserId)
-	if err := q.ExecContext(ctx); err != nil {
+	if err := q.ExecContext(dctx); err != nil {
+		span.RecordError(err)
+
 		var (
 			writeTimeout  gocql.RequestErrWriteTimeout
 			alreadyExists gocql.RequestErrAlreadyExists
@@ -48,8 +55,15 @@ func (repo *cassandraRepo) Create(ctx context.Context, m *domain.URLMapping) err
 }
 
 func (repo *cassandraRepo) Get(ctx context.Context, alias string) (*domain.URLMapping, error) {
+	dctx, span := telemetry.NewSpan(
+		ctx,
+		"Cassandra URL Mapping Repo: Get",
+		telemetry.StrAttr("alias", alias),
+	)
+	defer span.End()
+
 	m := domain.URLMapping{Alias: alias}
-	cacheErr := repo.cache.Get(ctx, alias, &m)
+	cacheErr := repo.cache.Get(dctx, alias, &m)
 	if cacheErr == nil {
 		return &m, nil
 	}
@@ -58,7 +72,9 @@ func (repo *cassandraRepo) Get(ctx context.Context, alias string) (*domain.URLMa
 		 FROM %s.url_mappings
 		 WHERE alias = ?`, repo.keyspace)
 	query := repo.session.Query(stmt, alias).Consistency(gocql.One)
-	if err := query.ScanContext(ctx, &m.LongURL, &m.CreatedAt, &m.UserId); err != nil {
+	if err := query.ScanContext(dctx, &m.LongURL, &m.CreatedAt, &m.UserId); err != nil {
+		span.RecordError(err)
+
 		var timeout gocql.RequestErrReadTimeout
 		switch {
 		case errors.As(err, &timeout):
@@ -70,8 +86,8 @@ func (repo *cassandraRepo) Get(ctx context.Context, alias string) (*domain.URLMa
 	}
 	if errs.IsNotFound(cacheErr) {
 		ttl := 10 * time.Minute // TODO: hardcoding TTL
-		if err := repo.cache.Put(ctx, alias, m, ttl); err != nil {
-			logger := logging.Get(ctx)
+		if err := repo.cache.Put(dctx, alias, m, ttl); err != nil {
+			logger := logging.Get(dctx)
 			logger.Error("failed to set cache entry", "key", alias, "error", err)
 		}
 	}
@@ -79,13 +95,22 @@ func (repo *cassandraRepo) Get(ctx context.Context, alias string) (*domain.URLMa
 }
 
 func (repo *cassandraRepo) Delete(ctx context.Context, alias string) error {
+	dctx, span := telemetry.NewSpan(
+		ctx,
+		"Cassandra URL Mapping Repo: Delete",
+		telemetry.StrAttr("alias", alias),
+	)
+	defer span.End()
+
 	stmt := fmt.Sprintf(
 		`DELETE FROM 
 		%s.url_mappings 
 		WHERE alias = ?`, repo.keyspace)
 
 	query := repo.session.Query(stmt, alias)
-	if err := query.ExecContext(ctx); err != nil {
+	if err := query.ExecContext(dctx); err != nil {
+		span.RecordError(err)
+
 		var (
 			readTimeout  gocql.RequestErrReadTimeout
 			writeTimeout gocql.RequestErrWriteTimeout
@@ -96,7 +121,7 @@ func (repo *cassandraRepo) Delete(ctx context.Context, alias string) error {
 		case errors.Is(err, gocql.ErrNotFound):
 			return errs.NewNotFound(err, "url mapping is not found")
 		}
-		return fmt.Errorf("'ExecContext' failed: %w", err)
+		return fmt.Errorf("'query.ExecContext' failed: %w", err)
 	}
 	return nil
 }

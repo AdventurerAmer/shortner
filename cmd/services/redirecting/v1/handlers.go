@@ -8,8 +8,7 @@ import (
 	"github.com/AdventurerAmer/shortner/apps/web"
 	"github.com/AdventurerAmer/shortner/internal/core/domain"
 	"github.com/AdventurerAmer/shortner/internal/core/ports"
-
-	"github.com/sony/gobreaker/v2"
+	"github.com/AdventurerAmer/shortner/telemetry"
 )
 
 type handlers struct {
@@ -24,25 +23,15 @@ func newHandlers(service ports.RedirectingService, eventProducer *ports.EventPro
 	}
 }
 
-var analyticsCB = gobreaker.NewCircuitBreaker[[]byte](gobreaker.Settings{
-	Name:        "analytics",
-	Timeout:     30 * time.Second, // Time in Open state before Half-Open
-	MaxRequests: 5,                // Requests allowed in Half-Open
-	Interval:    60 * time.Second, // Clear counts periodically in Closed
-	ReadyToTrip: func(counts gobreaker.Counts) bool {
-		return counts.ConsecutiveFailures > 5
-	},
-	IsSuccessful: func(err error) bool {
-		return err == nil
-	},
-})
-
 func (h *handlers) redirect(c *web.Context) (any, error) {
+	dctx, span := telemetry.NewSpan(c.Ctx(), "handler: redirect")
+	defer span.End()
+
 	req := ports.RedirectRequest{
 		Alias: c.Request.PathValue("alias"),
 	}
 
-	resp, err := h.service.Redirect(c.Ctx(), req)
+	resp, err := h.service.Redirect(dctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("'service.Redirect' failed: %w", err)
 	}

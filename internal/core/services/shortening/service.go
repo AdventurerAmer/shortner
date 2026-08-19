@@ -8,6 +8,7 @@ import (
 	"github.com/AdventurerAmer/shortner/internal/core/domain"
 	"github.com/AdventurerAmer/shortner/internal/core/ports"
 	"github.com/AdventurerAmer/shortner/snowflake"
+	"github.com/AdventurerAmer/shortner/telemetry"
 	"github.com/AdventurerAmer/shortner/validation"
 )
 
@@ -28,8 +29,12 @@ func New(cfg Config) ports.ShorteningService {
 }
 
 func (srv *service) Shorten(ctx context.Context, userId string, req ports.ShortenURLRequest) (ports.ShortenURLResponse, error) {
+	dctx, span := telemetry.NewSpan(ctx, "Shortening Service: Shorten")
+	defer span.End()
+
 	// TODO: check if userId is valid
 	if err := validation.Validate(&req); err != nil {
+		span.RecordError(err)
 		return ports.ShortenURLResponse{}, fmt.Errorf("validation failed: %w", err)
 	}
 	alias := srv.IdGenerator.Next()
@@ -39,7 +44,8 @@ func (srv *service) Shorten(ctx context.Context, userId string, req ports.Shorte
 		CreatedAt: time.Now().UTC(),
 		UserId:    userId,
 	}
-	if err := srv.URLMappingRepo.Create(ctx, mapping); err != nil {
+	if err := srv.URLMappingRepo.Create(dctx, mapping); err != nil {
+		span.RecordError(err)
 		return ports.ShortenURLResponse{}, fmt.Errorf("'URLMappingRepo.Create' failed: %w", err)
 	}
 	shortURL := srv.ShortURLPrefix + alias

@@ -4,13 +4,13 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/AdventurerAmer/shortner/errs"
 	"github.com/AdventurerAmer/shortner/internal/core/ports"
+	"github.com/AdventurerAmer/shortner/telemetry"
 	"github.com/AdventurerAmer/shortner/validation"
 )
 
 type Config struct {
-	AnalyticStatRepo ports.AnalyticClicksRepository
+	AnalyticClicksRepo ports.AnalyticClicksRepository
 }
 
 type service struct {
@@ -24,14 +24,16 @@ func New(cfg Config) ports.AnalyticService {
 }
 
 func (srv *service) Get(ctx context.Context, req ports.GetAnalyticStatRequest) (ports.GetAnalyticStatResponse, error) {
+	dctx, span := telemetry.NewSpan(ctx, "Analytics Service: Get")
+	defer span.End()
+
 	if err := validation.Validate(&req); err != nil {
+		span.RecordError(err)
 		return ports.GetAnalyticStatResponse{}, fmt.Errorf("validation failed: %w", err)
 	}
-	stat, err := srv.AnalyticStatRepo.Get(ctx, req.Alias)
+	stat, err := srv.AnalyticClicksRepo.Get(dctx, req.Alias)
 	if err != nil {
-		if errs.IsNotFound(err) {
-			return ports.GetAnalyticStatResponse{}, err
-		}
+		span.RecordError(err)
 		return ports.GetAnalyticStatResponse{}, fmt.Errorf("'AnalyticStatRepo.Get' failed: %w", err)
 	}
 	resp := ports.GetAnalyticStatResponse{

@@ -8,6 +8,7 @@ import (
 
 	"github.com/AdventurerAmer/shortner/errs"
 	"github.com/AdventurerAmer/shortner/internal/core/ports"
+	"github.com/AdventurerAmer/shortner/telemetry"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -22,10 +23,14 @@ func NewRedis(client *redis.Client) ports.Cache {
 }
 
 func (r *redisCache) Get(ctx context.Context, key string, v any) error {
-	data, err := r.client.Get(ctx, key).Result()
+	dctx, span := telemetry.NewSpan(ctx, "redisCache: Get")
+	defer span.End()
+
+	data, err := r.client.Get(dctx, key).Result()
 	if err == redis.Nil {
 		return errs.NewNotFound(nil, "key not found")
 	} else if err != nil {
+		span.RecordError(err)
 		return fmt.Errorf("'client.Get' failed: %w", err)
 	}
 
@@ -36,19 +41,16 @@ func (r *redisCache) Get(ctx context.Context, key string, v any) error {
 }
 
 func (r *redisCache) Put(ctx context.Context, key string, v any, TTL time.Duration) error {
+	dctx, span := telemetry.NewSpan(ctx, "redisCache: Put")
+	defer span.End()
+
 	data, err := json.Marshal(v)
 	if err != nil {
 		return fmt.Errorf("'json.Marshal' failed: %w", err)
 	}
-	if _, err := r.client.Set(ctx, key, data, TTL).Result(); err != nil {
+	if _, err := r.client.Set(dctx, key, data, TTL).Result(); err != nil {
+		span.RecordError(err)
 		return fmt.Errorf("'client.Set' failed: %w", err)
-	}
-	return nil
-}
-
-func (r *redisCache) Inc(ctx context.Context, key string) error {
-	if _, err := r.client.Incr(ctx, key).Result(); err != nil {
-		return fmt.Errorf("'client.Incr' failed: %w", err)
 	}
 	return nil
 }

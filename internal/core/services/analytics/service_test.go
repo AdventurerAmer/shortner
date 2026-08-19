@@ -45,7 +45,7 @@ func TestAnalyticsService_ClickHouseRepo(t *testing.T) {
 	repo := analyticclicks.NewClickHouse(database, clickHouse.Conn, ports.NewCacheStub(), time.Second)
 
 	srvCfg := Config{
-		AnalyticStatRepo: repo,
+		AnalyticClicksRepo: repo,
 	}
 	service := &service{
 		Config: srvCfg,

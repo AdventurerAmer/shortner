@@ -10,7 +10,6 @@ import (
 type Cache interface {
 	Get(ctx context.Context, key string, v any) error
 	Put(ctx context.Context, key string, v any, TTL time.Duration) error
-	Inc(ctx context.Context, key string) error
 }
 
 type cacheStub struct{}
@@ -20,10 +19,6 @@ func (c *cacheStub) Get(ctx context.Context, key string, v any) error {
 }
 
 func (c *cacheStub) Put(ctx context.Context, key string, v any, TTL time.Duration) error {
-	return nil
-}
-
-func (c *cacheStub) Inc(ctx context.Context, key string) error {
 	return nil
 }
 

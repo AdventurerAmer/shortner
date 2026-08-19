@@ -5,6 +5,7 @@ import (
 
 	"github.com/AdventurerAmer/shortner/apps/web"
 	"github.com/AdventurerAmer/shortner/internal/core/ports"
+	"github.com/AdventurerAmer/shortner/telemetry"
 )
 
 type handlers struct {
@@ -18,11 +19,14 @@ func newHandlers(service ports.AnalyticService) *handlers {
 }
 
 func (h *handlers) get(c *web.Context) (any, error) {
+	dctx, span := telemetry.NewSpan(c.Ctx(), "handler: get")
+	defer span.End()
+
 	req := ports.GetAnalyticStatRequest{
 		Alias: c.Request.PathValue("alias"),
 	}
 
-	resp, err := h.service.Get(c.Ctx(), req)
+	resp, err := h.service.Get(dctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("'service.Get' failed: %w", err)
 	}

@@ -7,6 +7,7 @@ import (
 
 	"github.com/AdventurerAmer/shortner/internal/core/ports"
 	"github.com/AdventurerAmer/shortner/logging"
+	"github.com/AdventurerAmer/shortner/telemetry"
 	"github.com/segmentio/kafka-go"
 )
 
@@ -15,11 +16,15 @@ type kafkaProducer struct {
 }
 
 func (p *kafkaProducer) Send(ctx context.Context, key string, data []byte) error {
+	dctx, span := telemetry.NewSpan(ctx, "kafkaProducer: Send")
+	defer span.End()
+
 	msg := kafka.Message{
 		Key:   []byte(key),
 		Value: data,
 	}
-	if err := p.writer.WriteMessages(ctx, msg); err != nil {
+	if err := p.writer.WriteMessages(dctx, msg); err != nil {
+		span.RecordError(err)
 		return fmt.Errorf("'writer.WriteMessages' failed: %w", err)
 	}
 	return nil
@@ -42,6 +47,9 @@ func NewKafkaConsumer(reader *kafka.Reader) ports.Consumer {
 }
 
 func (c *kafkaConsumer) Receive(ctx context.Context) <-chan ports.ConsumerMessage {
+	dctx, span := telemetry.NewSpan(ctx, "kafkaConsumer: Receive")
+	defer span.End()
+
 	logger := logging.Get(ctx)
 
 	msgCh := make(chan ports.ConsumerMessage, 1)
@@ -49,9 +57,10 @@ func (c *kafkaConsumer) Receive(ctx context.Context) <-chan ports.ConsumerMessag
 
 	go func() {
 		for {
-			msg, err := c.reader.FetchMessage(ctx)
+			msg, err := c.reader.FetchMessage(dctx)
 			if err != nil {
 				if errors.Is(err, context.Canceled) {
+					span.RecordError(err)
 					close(doneCh)
 					close(msgCh)
 					return
@@ -73,8 +82,12 @@ func (c *kafkaConsumer) Receive(ctx context.Context) <-chan ports.ConsumerMessag
 }
 
 func (c *kafkaConsumer) Ack(ctx context.Context, msg ports.ConsumerMessage) error {
+	dctx, span := telemetry.NewSpan(ctx, "kafkaConsumer: Ack")
+	defer span.End()
+
 	originalMsg := msg.OriginalMsg.(kafka.Message)
-	if err := c.reader.CommitMessages(ctx, originalMsg); err != nil {
+	if err := c.reader.CommitMessages(dctx, originalMsg); err != nil {
+		span.RecordError(err)
 		return fmt.Errorf("'reader.CommitMessages' failed: %w", err)
 	}
 	return nil

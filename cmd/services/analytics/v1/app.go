@@ -51,7 +51,7 @@ func Run() int {
 		cfg.Infrastructure.ClickHouse.Database, clickHouseCtx.Conn, redisCache, time.Second)
 
 	analyticsCfg := analytics.Config{
-		AnalyticStatRepo: analyticClicksRepo,
+		AnalyticClicksRepo: analyticClicksRepo,
 	}
 	service := analytics.New(analyticsCfg)
 
