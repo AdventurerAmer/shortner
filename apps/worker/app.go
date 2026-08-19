@@ -7,8 +7,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/AdventurerAmer/shortner/config"
 	"github.com/AdventurerAmer/shortner/internal/core/ports"
 	"github.com/AdventurerAmer/shortner/logging"
+	"github.com/AdventurerAmer/shortner/telemetry"
 )
 
 type App struct {
@@ -36,8 +38,19 @@ func New(logger *logging.Logger, consumer ports.Consumer, opts ...Option) (*App,
 	return app, nil
 }
 
-func (app *App) Run(handler ports.ConsumerHandlerFunc) error {
+func (app *App) Run(cfg *config.Config, handler ports.ConsumerHandlerFunc) error {
 	logger := app.logger
+
+	// TODO: hardcoding version here
+	shutdown, err := telemetry.New(cfg, "Worker", "0.0.1")
+	if err != nil {
+		return fmt.Errorf("'telemetry.New' failed: %w", err)
+	}
+	defer func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		shutdown(ctx)
+	}()
 
 	sigCtx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()

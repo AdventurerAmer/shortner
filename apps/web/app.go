@@ -33,6 +33,7 @@ func (app *App) Run(router http.Handler) error {
 	cfg := app.serviceCfg
 	logger := app.logger
 
+	// TODO: hardcoding version here
 	shutdown, err := telemetry.New(app.cfg, app.serviceCfg.Name, "0.0.1")
 	if err != nil {
 		return fmt.Errorf("'telemetry.New' failed: %w", err)

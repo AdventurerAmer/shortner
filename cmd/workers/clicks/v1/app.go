@@ -16,6 +16,7 @@ import (
 	"github.com/AdventurerAmer/shortner/internal/core/ports"
 	"github.com/AdventurerAmer/shortner/internal/repos/analyticclicks"
 	"github.com/AdventurerAmer/shortner/logging"
+	"github.com/AdventurerAmer/shortner/telemetry"
 )
 
 func Run() int {
@@ -61,6 +62,9 @@ func Run() int {
 	}
 
 	h := func(ctx context.Context, msg ports.ConsumerMessage) error {
+		dctx, span := telemetry.NewSpan(ctx, "Clicks Worker: Handle", telemetry.StrAttr("Key", msg.Key))
+		defer span.End()
+
 		logger.Info("recived event", "status", "started", "key", msg.Key)
 		defer logger.Info("recived event", "status", "ended", "key", msg.Key)
 
@@ -78,7 +82,7 @@ func Run() int {
 
 		return nil
 	}
-	if err := app.Run(h); err != nil {
+	if err := app.Run(cfg, h); err != nil {
 		logger.Error("'app.Run' failed", "error", err)
 		return 1
 	}
