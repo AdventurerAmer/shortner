@@ -14,35 +14,26 @@ import (
 )
 
 type App struct {
-	Config
-	logger   *logging.Logger
+	*config.WorkerConfig
+	cfg      *config.Config
 	consumer ports.Consumer
+	logger   *logging.Logger
 }
 
-func New(logger *logging.Logger, consumer ports.Consumer, opts ...Option) (*App, error) {
-	cfg := Config{
-		gracefulShutdownTimeout: 10 * time.Second,
-		ackTimeout:              time.Second,
-		ackRetries:              10,
-	}
-	for _, opt := range opts {
-		if err := opt(&cfg); err != nil {
-			return nil, err
-		}
-	}
+func New(workerCfg *config.WorkerConfig, cfg *config.Config, consumer ports.Consumer, logger *logging.Logger) *App {
 	app := &App{
-		Config:   cfg,
-		logger:   logger,
-		consumer: consumer,
+		WorkerConfig: workerCfg,
+		cfg:          cfg,
+		consumer:     consumer,
+		logger:       logger,
 	}
-	return app, nil
+	return app
 }
 
-func (app *App) Run(cfg *config.Config, handler ports.ConsumerHandlerFunc) error {
+func (app *App) Run(handler ports.ConsumerHandlerFunc) error {
 	logger := app.logger
 
-	// TODO: hardcoding version here
-	shutdown, err := telemetry.New(cfg, "Worker", "0.0.1")
+	shutdown, err := telemetry.New(app.cfg, "Worker", "0.0.1")
 	if err != nil {
 		return fmt.Errorf("'telemetry.New' failed: %w", err)
 	}
@@ -63,14 +54,14 @@ func (app *App) Run(cfg *config.Config, handler ports.ConsumerHandlerFunc) error
 
 	go func() {
 		for msg := range msgCh {
-			if err := handler(ctx, msg); err != nil {
+			if err := app.consumer.Consume(ctx, msg, handler); err != nil {
 				logger.Error("handle message failed", "error", err)
 				continue
 			}
 			var lastErr error
-			for range app.ackRetries {
+			for range app.AckRetries {
 				err := func() error {
-					dctx, cancel := context.WithTimeout(ctx, app.ackTimeout)
+					dctx, cancel := context.WithTimeout(ctx, app.AckTimeout)
 					defer cancel()
 					if err := app.consumer.Ack(dctx, msg); err != nil {
 						return fmt.Errorf("'consumer.Ack' failed: %w", err)
@@ -97,7 +88,7 @@ func (app *App) Run(cfg *config.Config, handler ports.ConsumerHandlerFunc) error
 
 	select {
 	case <-done:
-	case <-time.After(app.gracefulShutdownTimeout):
+	case <-time.After(app.GracefulShutdownTimeout):
 		return fmt.Errorf("graceful shutdown timeout")
 	}
 

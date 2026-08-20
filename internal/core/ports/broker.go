@@ -18,5 +18,6 @@ type ConsumerHandlerFunc = func(ctx context.Context, msg ConsumerMessage) error
 
 type Consumer interface {
 	Receive(ctx context.Context) <-chan ConsumerMessage
+	Consume(ctx context.Context, msg ConsumerMessage, handler ConsumerHandlerFunc) error
 	Ack(ctx context.Context, msg ConsumerMessage) error
 }

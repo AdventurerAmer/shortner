@@ -11,7 +11,6 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
-	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.43.0"
@@ -29,14 +28,14 @@ type TrackerConfig struct {
 }
 
 func NewTracker(ctx context.Context, cfg TrackerConfig) (*sdktrace.TracerProvider, error) {
-	var envKeyVal attribute.KeyValue
+	var envAtrrib attribute.KeyValue
 	switch cfg.Env {
 	case config.EnvLocal:
-		envKeyVal = semconv.DeploymentEnvironmentNameDevelopment
+		envAtrrib = semconv.DeploymentEnvironmentNameDevelopment
 	case config.EnvStaging:
-		envKeyVal = semconv.DeploymentEnvironmentNameStaging
+		envAtrrib = semconv.DeploymentEnvironmentNameStaging
 	case config.EnvProd:
-		envKeyVal = semconv.DeploymentEnvironmentNameProduction
+		envAtrrib = semconv.DeploymentEnvironmentNameProduction
 	}
 	res, err := resource.Merge(
 		resource.Default(),
@@ -44,7 +43,7 @@ func NewTracker(ctx context.Context, cfg TrackerConfig) (*sdktrace.TracerProvide
 			semconv.SchemaURL,
 			semconv.ServiceName(cfg.ServiceName),
 			semconv.ServiceVersion(cfg.ServiceVersion),
-			envKeyVal,
+			envAtrrib,
 		),
 	)
 	if err != nil {
@@ -87,12 +86,6 @@ func NewTracker(ctx context.Context, cfg TrackerConfig) (*sdktrace.TracerProvide
 		sdktrace.WithSampler(sampler),
 	)
 
-	// Propagators (W3C is standard, B3 is still common)
-	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
-		propagation.TraceContext{},
-		propagation.Baggage{},
-	))
-
 	return tp, nil
 }
 
@@ -100,6 +93,12 @@ func NewHttpHandler(handler http.Handler, serviceName string) http.Handler {
 	return otelhttp.NewHandler(handler, serviceName)
 }
 
+func GetTracer() Tracer {
+	tr := otel.GetTracerProvider().Tracer(serviceName)
+	return tr
+}
+
+type Tracer = trace.Tracer
 type Span = trace.Span
 type Attribute = attribute.KeyValue
 
@@ -107,21 +106,23 @@ var StrAttr = attribute.String
 var Int64Attr = attribute.Int64
 var BoolAttr = attribute.Bool
 
-type serviceNameCtxKey struct{}
-
-func SetServiceName(ctx context.Context, name string) context.Context {
-	return context.WithValue(ctx, serviceNameCtxKey{}, name)
-}
-
-func GetServiceName(ctx context.Context) string {
-	return ctx.Value(serviceNameCtxKey{}).(string)
-}
-
 func NewSpan(ctx context.Context, name string, attrs ...Attribute) (context.Context, Span) {
-	serviceName := GetServiceName(ctx)
 	tr := otel.GetTracerProvider().Tracer(serviceName)
 	dctx, sp := tr.Start(ctx, name, trace.WithAttributes(attrs...))
 	return dctx, sp
+}
+
+func NewProducerSpan(ctx context.Context, name, system, topic string, attrs ...Attribute) (context.Context, Span) {
+	tr := otel.GetTracerProvider().Tracer(serviceName)
+	dctx, span := tr.Start(ctx, fmt.Sprintf("%s.produce", name),
+		trace.WithSpanKind(trace.SpanKindProducer),
+		trace.WithAttributes(
+			semconv.MessagingSystemKey.String(system),
+			semconv.MessagingDestinationName(topic),
+			semconv.MessagingOperationName("Publish"),
+		),
+	)
+	return dctx, span
 }
 
 func GetSpan(ctx context.Context) Span {
@@ -134,9 +135,4 @@ func GetTraceId(ctx context.Context) string {
 		return spanCtx.TraceID().String()
 	}
 	return ""
-}
-
-func GetTracingContext(r *http.Request) context.Context {
-	ctx := otel.GetTextMapPropagator().Extract(r.Context(), propagation.HeaderCarrier(r.Header))
-	return ctx
 }

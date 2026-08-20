@@ -7,12 +7,17 @@ import (
 	"github.com/AdventurerAmer/shortner/config"
 	"github.com/AdventurerAmer/shortner/logging"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 )
+
+var serviceName string
 
 type Shutdown = func(ctx context.Context)
 
 func New(cfg *config.Config, Name, Version string) (Shutdown, error) {
+	serviceName = Name
+
 	ctx := context.Background()
 
 	var tp *sdktrace.TracerProvider
@@ -29,6 +34,12 @@ func New(cfg *config.Config, Name, Version string) (Shutdown, error) {
 		if err != nil {
 			return nil, fmt.Errorf("'NewTracker' failed: %w", err)
 		}
+
+		// Propagators (W3C is standard, B3 is still common)
+		otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
+			propagation.TraceContext{},
+			propagation.Baggage{},
+		))
 		otel.SetTracerProvider(tp)
 	}
 

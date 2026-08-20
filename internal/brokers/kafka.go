@@ -4,11 +4,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"github.com/AdventurerAmer/shortner/internal/core/ports"
 	"github.com/AdventurerAmer/shortner/logging"
 	"github.com/AdventurerAmer/shortner/telemetry"
 	"github.com/segmentio/kafka-go"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/propagation"
+	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type kafkaProducer struct {
@@ -23,6 +29,11 @@ func (p *kafkaProducer) Send(ctx context.Context, key string, data []byte) error
 		Key:   []byte(key),
 		Value: data,
 	}
+
+	carrier := KafkaGoCarrier(msg.Headers)
+	otel.GetTextMapPropagator().Inject(ctx, &carrier)
+	msg.Headers = []kafka.Header(carrier)
+
 	if err := p.writer.WriteMessages(dctx, msg); err != nil {
 		span.RecordError(err)
 		return fmt.Errorf("'writer.WriteMessages' failed: %w", err)
@@ -47,9 +58,6 @@ func NewKafkaConsumer(reader *kafka.Reader) ports.Consumer {
 }
 
 func (c *kafkaConsumer) Receive(ctx context.Context) <-chan ports.ConsumerMessage {
-	dctx, span := telemetry.NewSpan(ctx, "kafkaConsumer: Receive")
-	defer span.End()
-
 	logger := logging.Get(ctx)
 
 	msgCh := make(chan ports.ConsumerMessage, 1)
@@ -57,10 +65,9 @@ func (c *kafkaConsumer) Receive(ctx context.Context) <-chan ports.ConsumerMessag
 
 	go func() {
 		for {
-			msg, err := c.reader.FetchMessage(dctx)
+			msg, err := c.reader.FetchMessage(ctx)
 			if err != nil {
 				if errors.Is(err, context.Canceled) {
-					span.RecordError(err)
 					close(doneCh)
 					close(msgCh)
 					return
@@ -81,14 +88,86 @@ func (c *kafkaConsumer) Receive(ctx context.Context) <-chan ports.ConsumerMessag
 	return msgCh
 }
 
-func (c *kafkaConsumer) Ack(ctx context.Context, msg ports.ConsumerMessage) error {
-	dctx, span := telemetry.NewSpan(ctx, "kafkaConsumer: Ack")
+func (c *kafkaConsumer) Consume(ctx context.Context, msg ports.ConsumerMessage, handler ports.ConsumerHandlerFunc) error {
+	originalMsg := msg.OriginalMsg.(kafka.Message)
+
+	dctx, span := NewConsumerSpan(ctx, "kafkaConsumer: Consume", originalMsg)
 	defer span.End()
 
+	if err := handler(dctx, msg); err != nil {
+		return fmt.Errorf("'handler' failed: %w", err)
+	}
+
+	return nil
+}
+
+func (c *kafkaConsumer) Ack(ctx context.Context, msg ports.ConsumerMessage) error {
 	originalMsg := msg.OriginalMsg.(kafka.Message)
+
+	dctx, span := NewConsumerSpan(ctx, "kafkaConsumer: Ack", originalMsg)
+	defer span.End()
+
 	if err := c.reader.CommitMessages(dctx, originalMsg); err != nil {
 		span.RecordError(err)
 		return fmt.Errorf("'reader.CommitMessages' failed: %w", err)
 	}
 	return nil
 }
+
+func NewConsumerSpan(ctx context.Context, name string, msg kafka.Message) (context.Context, telemetry.Span) {
+	// 1. Extract remote context from headers
+	carrier := KafkaGoCarrier(msg.Headers)
+	dctx := otel.GetTextMapPropagator().Extract(ctx, &carrier)
+	tr := telemetry.GetTracer()
+	// Option A – child span (keeps parent-child relationship)
+	tctx, span := tr.Start(dctx, "kafka.consume",
+		trace.WithSpanKind(trace.SpanKindConsumer),
+		trace.WithAttributes(
+			semconv.MessagingSystemKey.String("kafka"),
+			semconv.MessagingDestinationName(msg.Topic),
+			semconv.MessagingOperationReceive,
+			attribute.Int("messaging.kafka.partition", msg.Partition),
+			attribute.Int64("messaging.kafka.offset", msg.Offset),
+		),
+	)
+
+	traceId := telemetry.GetTraceId(tctx)
+	logger := logging.Get(tctx).With(slog.String("correlationId", traceId))
+	lctx := logging.Set(tctx, logger)
+
+	return lctx, span
+}
+
+// KafkaGoCarrier adapts []kafka.Header so OpenTelemetry can inject/extract
+// trace context (traceparent, tracestate, baggage) into Kafka message headers.
+type KafkaGoCarrier []kafka.Header
+
+func (c *KafkaGoCarrier) Get(key string) string {
+	for _, h := range *c {
+		if h.Key == key {
+			return string(h.Value)
+		}
+	}
+	return ""
+}
+
+func (c *KafkaGoCarrier) Set(key, value string) {
+	for i, h := range *c {
+		if h.Key == key {
+			(*c)[i].Value = []byte(value)
+			return
+		}
+	}
+	*c = append(*c, kafka.Header{Key: key, Value: []byte(value)})
+}
+
+func (c *KafkaGoCarrier) Keys() []string {
+	keys := make([]string, len(*c))
+	for i, h := range *c {
+		keys[i] = h.Key
+	}
+	return keys
+}
+
+// Ensure it satisfies the interface at compile time
+var _ propagation.TextMapCarrier = (*KafkaGoCarrier)(nil)

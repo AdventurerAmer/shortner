@@ -31,39 +31,16 @@ const (
 type Config struct {
 	Env            Env                  `koanf:"env" validate:"required,oneof=local staging production"`
 	App            AppConfig            `koanf:"app"`
+	Infrastructure InfrastructureConfig `koanf:"infrastructure"`
 	Observability  ObservabilityConfig  `koanf:"observability"`
 	Services       ServicesConfig       `koanf:"services"`
-	Infrastructure InfrastructureConfig `koanf:"infrastructure"`
+	Workers        WorkersConfig        `koanf:"workers"`
 }
 
 type AppConfig struct {
 	Name    string `koanf:"name" validate:"required,min=1,max=128"`
 	Domain  string `koanf:"domain" validate:"required,min=1"`
 	Version string `koanf:"version" validate:"required,semver"`
-}
-
-type ServiceConfig struct {
-	Name                    string        `koanf:"name" validate:"required,min=1,max=128"`
-	Port                    int           `koanf:"port" validate:"required,min=1,max=65535"`
-	MaxHeaderBytes          int           `koanf:"maxHeaderBytes" validate:"required,min=1"`
-	ReadHeaderTimeout       time.Duration `koanf:"ReadHeaderTimeout" validate:"required,min=1s"`
-	ReadTimeout             time.Duration `koanf:"readTimeout" validate:"required,min=1s"`
-	WriteTimeout            time.Duration `koanf:"writeTimeout" validate:"required,min=1s"`
-	IdleTimeout             time.Duration `koanf:"idleTimeout" validate:"required,min=1s"`
-	DefaultTimeout          time.Duration `koanf:"defaultTimeout" validate:"required,min=1s"`
-	GracefulShutdownTimeout time.Duration `koanf:"gracefulShutdownTimeout" validate:"required,min=1s"`
-	allowedOrigins          []string      `koanf:"allowedOrigins" validate:"required"`
-}
-
-func (srv *ServiceConfig) Address() string {
-	// TODO: using http here
-	return fmt.Sprintf("http://localhost:%d", srv.Port)
-}
-
-type ServicesConfig struct {
-	Shortening  ServiceConfig `koanf:"shortening"`
-	Redirecting ServiceConfig `koanf:"redirecting"`
-	Analytics   ServiceConfig `koanf:"analytics"`
 }
 
 func Load() (*Config, error) {
@@ -172,48 +149,9 @@ func setDefaults(cfg *Config) {
 	setServiceDefaults(&cfg.Services.Shortening)
 	setServiceDefaults(&cfg.Services.Redirecting)
 	setServiceDefaults(&cfg.Services.Analytics)
-}
 
-func setServiceDefaults(cfg *ServiceConfig) {
-	if cfg.Name == "" {
-		cfg.Name = "service"
-	}
-
-	if cfg.Port == 0 {
-		cfg.Port = 3030
-	}
-
-	if cfg.MaxHeaderBytes == 0 {
-		cfg.MaxHeaderBytes = 1024 * 1024 // 1MB
-	}
-
-	if cfg.ReadHeaderTimeout == 0 {
-		cfg.ReadHeaderTimeout = time.Second
-	}
-
-	if cfg.ReadTimeout == 0 {
-		cfg.ReadTimeout = time.Second
-	}
-
-	if cfg.WriteTimeout == 0 {
-		cfg.WriteTimeout = time.Second
-	}
-
-	if cfg.IdleTimeout == 0 {
-		cfg.IdleTimeout = time.Minute
-	}
-
-	if cfg.DefaultTimeout == 0 {
-		cfg.DefaultTimeout = time.Second
-	}
-
-	if cfg.GracefulShutdownTimeout == 0 {
-		cfg.GracefulShutdownTimeout = 10 * time.Second
-	}
-
-	if cfg.allowedOrigins == nil {
-		cfg.allowedOrigins = []string{}
-	}
+	setWorkerDefaults(&cfg.Workers.Clicks)
+	setWorkerDefaults(&cfg.Workers.ClicksBatcher)
 }
 
 func snakeCaseToCamelCase(s string) string {

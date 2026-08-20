@@ -12,22 +12,45 @@ import (
 	"github.com/AdventurerAmer/shortner/errs"
 	"github.com/AdventurerAmer/shortner/logging"
 	"github.com/AdventurerAmer/shortner/telemetry"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/propagation"
+	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
 )
 
-const RequestIdHeader = "X-Request-ID"
-
-func Trace(serviceName string) Middleware {
-	return func(next http.HandlerFunc) http.HandlerFunc {
-		return telemetry.NewHttpHandler(next, serviceName).ServeHTTP
-	}
-}
-
-func CorrelationId(next http.HandlerFunc) http.HandlerFunc {
+func Trace(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		traceId := telemetry.GetTraceId(r.Context())
+		// 1. Extract remote context from request headers
+		ctx := otel.GetTextMapPropagator().Extract(
+			r.Context(),
+			propagation.HeaderCarrier(r.Header),
+		)
+
+		// 2. Create span name (common pattern)
+		spanName := fmt.Sprintf("%s %s", r.Method, r.URL.Path)
+
+		sctx, span := telemetry.NewSpan(ctx, spanName, semconv.HTTPMethodKey.String(r.Method),
+			semconv.HTTPTargetKey.String(r.URL.Path),
+			semconv.HTTPSchemeKey.String(r.URL.Scheme),
+			semconv.NetHostNameKey.String(r.Host),
+			attribute.String("http.user_agent", r.UserAgent()))
+
+		defer span.End()
+
+		rw := &responseWriterWrapper{ResponseWriter: w, statusCode: http.StatusOK}
+
+		traceId := telemetry.GetTraceId(sctx)
 		logger := logging.Get(r.Context()).With(slog.String("correlationId", traceId))
 		dctx := logging.Set(r.Context(), logger)
-		next(w, r.WithContext(dctx))
+
+		next(rw, r.WithContext(dctx))
+
+		// 6. Set final status
+		span.SetAttributes(semconv.HTTPStatusCodeKey.Int(rw.statusCode))
+		if rw.statusCode >= 500 {
+			span.SetStatus(codes.Error, http.StatusText(rw.statusCode))
+		}
 	}
 }
 

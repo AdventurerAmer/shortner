@@ -25,8 +25,8 @@ func Run() int {
 		return 1
 	}
 
-	groupId := "clicksBatcher"
-	logger := logging.New(cfg).With(slog.String("worker", groupId))
+	workerCfg := &cfg.Workers.Clicks
+	logger := logging.New(cfg).With(slog.String("worker", workerCfg.Name))
 
 	writer := infra.NewKafkaWriter(cfg.Infrastructure.Kafka, domain.ClicksBatchTopic)
 	defer func() {
@@ -51,7 +51,7 @@ func Run() int {
 	batchSize := 1024
 	collector := newCollector(bucketCount, bucketCapacity, batchSize, orch, eventProducer)
 
-	reader := infra.NewKafkaReader(cfg.Infrastructure.Kafka, domain.ClicksTopic, groupId)
+	reader := infra.NewKafkaReader(cfg.Infrastructure.Kafka, domain.Topic(workerCfg.Topic), workerCfg.Group)
 	defer func() {
 		if err := reader.Close(); err != nil {
 			logger.Error("'reader.Close' failed", "error", err)
@@ -59,15 +59,13 @@ func Run() int {
 	}()
 
 	consumer := brokers.NewKafkaConsumer(reader)
-	app, err := worker.New(logger, consumer)
-	if err != nil {
-		logger.Error("'worker.New' failed", "error", err)
-		return 1
-	}
+	app := worker.New(&cfg.Workers.ClicksBatcher, cfg, consumer, logger)
 
 	h := func(hctx context.Context, msg ports.ConsumerMessage) error {
-		_, span := telemetry.NewSpan(hctx, "Clicks Batcher Worker: Handle", telemetry.StrAttr("Key", msg.Key))
+		dctx, span := telemetry.NewSpan(hctx, "Clicks Batcher Worker: Handle", telemetry.StrAttr("Key", msg.Key))
 		defer span.End()
+
+		logger := logging.Get(dctx)
 
 		logger.Info("recived event", "status", "started", "key", msg.Key)
 		defer logger.Info("recived event", "status", "ended", "key", msg.Key)
@@ -82,7 +80,7 @@ func Run() int {
 
 		return nil
 	}
-	if err := app.Run(cfg, h); err != nil {
+	if err := app.Run(h); err != nil {
 		logger.Error("'app.Run' failed", "error", err)
 		return 1
 	}

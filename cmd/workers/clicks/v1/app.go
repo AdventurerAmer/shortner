@@ -26,8 +26,8 @@ func Run() int {
 		return 1
 	}
 
-	groupId := "clicks"
-	logger := logging.New(cfg).With(slog.String("worker", groupId))
+	workerCfg := &cfg.Workers.ClicksBatcher
+	logger := logging.New(cfg).With(slog.String("worker", workerCfg.Name))
 
 	var clickHouseCtx infra.ClickHouse
 
@@ -47,7 +47,7 @@ func Run() int {
 	analyticClicksRepo := analyticclicks.NewClickHouse(
 		cfg.Infrastructure.ClickHouse.Database, clickHouseCtx.Conn, ports.NewCacheStub(), time.Second)
 
-	reader := infra.NewKafkaReader(cfg.Infrastructure.Kafka, domain.ClicksBatchTopic, groupId)
+	reader := infra.NewKafkaReader(cfg.Infrastructure.Kafka, domain.Topic(workerCfg.Topic), workerCfg.Group)
 	defer func() {
 		if err := reader.Close(); err != nil {
 			logger.Error("'reader.Close' failed", "error", err)
@@ -55,15 +55,14 @@ func Run() int {
 	}()
 
 	consumer := brokers.NewKafkaConsumer(reader)
-	app, err := worker.New(logger, consumer)
-	if err != nil {
-		logger.Error("'worker.New' failed", "error", err)
-		return 1
-	}
+	app := worker.New(&cfg.Workers.Clicks, cfg, consumer, logger)
 
 	h := func(ctx context.Context, msg ports.ConsumerMessage) error {
-		dctx, span := telemetry.NewSpan(ctx, "Clicks Worker: Handle", telemetry.StrAttr("Key", msg.Key))
+		dctx, span := telemetry.NewSpan(ctx, "Clicks Worker: Handle",
+			telemetry.StrAttr("key", msg.Key))
 		defer span.End()
+
+		logger := logging.Get(dctx)
 
 		logger.Info("recived event", "status", "started", "key", msg.Key)
 		defer logger.Info("recived event", "status", "ended", "key", msg.Key)
@@ -82,7 +81,7 @@ func Run() int {
 
 		return nil
 	}
-	if err := app.Run(cfg, h); err != nil {
+	if err := app.Run(h); err != nil {
 		logger.Error("'app.Run' failed", "error", err)
 		return 1
 	}

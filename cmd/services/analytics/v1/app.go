@@ -57,8 +57,7 @@ func Run() int {
 
 	mux := web.NewMux(logger)
 
-	mux.Use(web.Trace(serviceCfg.Name))
-	mux.Use(web.CorrelationId)
+	mux.Use(web.Trace)
 	mux.Use(web.Logging)
 	mux.Use(web.Recover(cfg.Env))
 	mux.Use(web.Timeout(serviceCfg.DefaultTimeout))
