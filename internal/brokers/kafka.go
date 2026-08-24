@@ -22,8 +22,18 @@ type kafkaProducer struct {
 }
 
 func (p *kafkaProducer) Send(ctx context.Context, key string, data []byte) error {
-	dctx, span := telemetry.NewSpan(ctx, "kafkaProducer: Send")
-	defer span.End()
+	tr := telemetry.GetTracer()
+	dctx, span := tr.Start(ctx, "kafka.produce",
+		trace.WithSpanKind(trace.SpanKindProducer),
+		trace.WithAttributes(
+			semconv.MessagingSystemKey.String("kafka"),
+			semconv.MessagingDestinationName(p.writer.Topic),
+			semconv.MessagingOperationPublish,
+		),
+	)
+
+	traceId := telemetry.GetTraceId(dctx)
+	slog.Info("kafkaProducer: Send", "traceId", traceId.String())
 
 	msg := kafka.Message{
 		Key:   []byte(key),
@@ -31,7 +41,7 @@ func (p *kafkaProducer) Send(ctx context.Context, key string, data []byte) error
 	}
 
 	carrier := KafkaGoCarrier(msg.Headers)
-	otel.GetTextMapPropagator().Inject(ctx, &carrier)
+	otel.GetTextMapPropagator().Inject(dctx, &carrier)
 	msg.Headers = []kafka.Header(carrier)
 
 	if err := p.writer.WriteMessages(dctx, msg); err != nil {
@@ -91,7 +101,7 @@ func (c *kafkaConsumer) Receive(ctx context.Context) <-chan ports.ConsumerMessag
 func (c *kafkaConsumer) Consume(ctx context.Context, msg ports.ConsumerMessage, handler ports.ConsumerHandlerFunc) error {
 	originalMsg := msg.OriginalMsg.(kafka.Message)
 
-	dctx, span := NewConsumerSpan(ctx, "kafkaConsumer: Consume", originalMsg)
+	dctx, span := newConsumerSpan(ctx, "kafkaConsumer: Consume", originalMsg)
 	defer span.End()
 
 	if err := handler(dctx, msg); err != nil {
@@ -104,7 +114,7 @@ func (c *kafkaConsumer) Consume(ctx context.Context, msg ports.ConsumerMessage, 
 func (c *kafkaConsumer) Ack(ctx context.Context, msg ports.ConsumerMessage) error {
 	originalMsg := msg.OriginalMsg.(kafka.Message)
 
-	dctx, span := NewConsumerSpan(ctx, "kafkaConsumer: Ack", originalMsg)
+	dctx, span := newConsumerSpan(ctx, "kafkaConsumer: Ack", originalMsg)
 	defer span.End()
 
 	if err := c.reader.CommitMessages(dctx, originalMsg); err != nil {
@@ -114,13 +124,13 @@ func (c *kafkaConsumer) Ack(ctx context.Context, msg ports.ConsumerMessage) erro
 	return nil
 }
 
-func NewConsumerSpan(ctx context.Context, name string, msg kafka.Message) (context.Context, telemetry.Span) {
+func newConsumerSpan(ctx context.Context, name string, msg kafka.Message) (context.Context, telemetry.Span) {
 	// 1. Extract remote context from headers
 	carrier := KafkaGoCarrier(msg.Headers)
 	dctx := otel.GetTextMapPropagator().Extract(ctx, &carrier)
 	tr := telemetry.GetTracer()
 	// Option A – child span (keeps parent-child relationship)
-	tctx, span := tr.Start(dctx, "kafka.consume",
+	tctx, span := tr.Start(dctx, name,
 		trace.WithSpanKind(trace.SpanKindConsumer),
 		trace.WithAttributes(
 			semconv.MessagingSystemKey.String("kafka"),
@@ -132,7 +142,7 @@ func NewConsumerSpan(ctx context.Context, name string, msg kafka.Message) (conte
 	)
 
 	traceId := telemetry.GetTraceId(tctx)
-	logger := logging.Get(tctx).With(slog.String("correlationId", traceId))
+	logger := logging.Get(tctx).With(slog.String("correlationId", traceId.String()))
 	lctx := logging.Set(tctx, logger)
 
 	return lctx, span

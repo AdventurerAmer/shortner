@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/AdventurerAmer/shortner/logging"
+	"github.com/AdventurerAmer/shortner/telemetry"
 	"github.com/google/uuid"
 )
 
@@ -26,9 +27,11 @@ func New(parent context.Context) *Orchestrator {
 	}
 }
 
-func (orch *Orchestrator) Go(parent context.Context, task Task) {
+func (orch *Orchestrator) Go(ctx context.Context, task Task) {
+	traceId := telemetry.GetTraceId(ctx)
+
 	uid := uuid.NewString()
-	logger := logging.Get(parent).With(slog.String("goroutineId", uid))
+	logger := logging.Get(ctx).With(slog.String("goroutineId", uid))
 
 	orch.wg.Go(func() {
 		defer func() {
@@ -41,8 +44,9 @@ func (orch *Orchestrator) Go(parent context.Context, task Task) {
 		logger.Debug("goroutine started")
 		defer logger.Debug("goroutine ended")
 
-		dctx := logging.Set(orch.ctx, logger)
-		task(dctx)
+		dctx := telemetry.InjectTraceId(orch.ctx, traceId)
+		lctx := logging.Set(dctx, logger)
+		task(lctx)
 	})
 }
 

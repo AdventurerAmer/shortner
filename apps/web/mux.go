@@ -80,7 +80,7 @@ func (mux *Mux) composeHTTPHandlerFunc(handler Handler) http.HandlerFunc {
 			w.WriteHeader(status)
 
 			traceId := telemetry.GetTraceId(r.Context())
-			resp = errs.NewUserError(traceId, expectedErr)
+			resp = errs.NewUserError(traceId.String(), expectedErr)
 		}
 		// We can have nil 'resp' in case of a (302) redirection for-example
 		if resp != nil {

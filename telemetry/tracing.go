@@ -112,27 +112,25 @@ func NewSpan(ctx context.Context, name string, attrs ...Attribute) (context.Cont
 	return dctx, sp
 }
 
-func NewProducerSpan(ctx context.Context, name, system, topic string, attrs ...Attribute) (context.Context, Span) {
-	tr := otel.GetTracerProvider().Tracer(serviceName)
-	dctx, span := tr.Start(ctx, fmt.Sprintf("%s.produce", name),
-		trace.WithSpanKind(trace.SpanKindProducer),
-		trace.WithAttributes(
-			semconv.MessagingSystemKey.String(system),
-			semconv.MessagingDestinationName(topic),
-			semconv.MessagingOperationName("Publish"),
-		),
-	)
-	return dctx, span
-}
-
 func GetSpan(ctx context.Context) Span {
 	return trace.SpanFromContext(ctx)
 }
 
-func GetTraceId(ctx context.Context) string {
+func GetTraceId(ctx context.Context) trace.TraceID {
 	spanCtx := trace.SpanContextFromContext(ctx)
 	if spanCtx.IsValid() && spanCtx.HasTraceID() {
-		return spanCtx.TraceID().String()
+		return spanCtx.TraceID()
 	}
-	return ""
+	return trace.TraceID{}
+}
+
+func InjectTraceId(ctx context.Context, traceId trace.TraceID) context.Context {
+	newSpanCtxConfig := trace.SpanContextConfig{
+		TraceID: traceId,
+		Remote:  true, // Explicitly marks that this trace originated elsewhere
+	}
+
+	newSpanCtx := trace.NewSpanContext(newSpanCtxConfig)
+	dctx := trace.ContextWithSpanContext(ctx, newSpanCtx)
+	return dctx
 }

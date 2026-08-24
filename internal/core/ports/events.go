@@ -71,7 +71,7 @@ func NewEventProducer(producer Producer, orch *goorch.Orchestrator, opts ...Even
 }
 
 func (ep *EventProducer) Fire(ctx context.Context, event any) {
-	taskHandler := func(tctx context.Context) {
+	taskHandler := func(gctx context.Context) {
 		retryHandler := func() error {
 			key := uuid.NewString()
 			data, err := json.Marshal(&event)
@@ -80,14 +80,15 @@ func (ep *EventProducer) Fire(ctx context.Context, event any) {
 			}
 
 			cbHandler := func() ([]byte, error) {
-				logger := logging.Get(tctx)
+				logger := logging.Get(gctx)
+
 				logger.Debug("sending event attempt started", "event", event)
 				defer logger.Debug("sending event attempt ended", "event", event)
 
-				dctx, cancel := context.WithTimeout(tctx, ep.timeout)
+				cctx, cancel := context.WithTimeout(gctx, ep.timeout)
 				defer cancel()
 
-				if err := ep.producer.Send(dctx, key, data); err != nil {
+				if err := ep.producer.Send(cctx, key, data); err != nil {
 					return nil, fmt.Errorf("'producer.Send' failed: %w", err)
 				}
 
@@ -105,9 +106,9 @@ func (ep *EventProducer) Fire(ctx context.Context, event any) {
 			retry.MaxJitter(200*time.Millisecond),
 			retry.DelayType(retry.BackOffDelay),
 			retry.LastErrorOnly(true),
-			retry.Context(tctx),
+			retry.Context(gctx),
 		); err != nil {
-			logger := logging.Get(tctx)
+			logger := logging.Get(gctx)
 			logger.Error("send event failed", "event", event, "error", err)
 		}
 	}

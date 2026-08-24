@@ -40,7 +40,7 @@ func (h *handlers) redirect(c *web.Context) (any, error) {
 		Alias:     req.Alias,
 		Timestamp: time.Now().UTC(),
 	}
-	h.eventProducer.Fire(c.Ctx(), event)
+	h.eventProducer.Fire(dctx, event)
 
 	// http.StatusFound represents a temporary (302) redirect
 	http.Redirect(c.ResponseWriter, c.Request, resp.LongURL, http.StatusFound)

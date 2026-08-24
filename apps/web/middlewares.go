@@ -35,14 +35,13 @@ func Trace(next http.HandlerFunc) http.HandlerFunc {
 			semconv.HTTPSchemeKey.String(r.URL.Scheme),
 			semconv.NetHostNameKey.String(r.Host),
 			attribute.String("http.user_agent", r.UserAgent()))
-
 		defer span.End()
 
 		rw := &responseWriterWrapper{ResponseWriter: w, statusCode: http.StatusOK}
 
 		traceId := telemetry.GetTraceId(sctx)
-		logger := logging.Get(r.Context()).With(slog.String("correlationId", traceId))
-		dctx := logging.Set(r.Context(), logger)
+		logger := logging.Get(sctx).With(slog.String("correlationId", traceId.String()))
+		dctx := logging.Set(sctx, logger)
 
 		next(rw, r.WithContext(dctx))
 
