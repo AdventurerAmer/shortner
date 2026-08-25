@@ -78,6 +78,13 @@ func New(cfg *config.Config, Name, Version string) (Shutdown, error) {
 		if err != nil {
 			return nil, fmt.Errorf("'NewPrometheus' failed: %w", err)
 		}
+
+		if cfg.Observability.Metrics.RuntimeMetrics {
+			if err := RuntimeMetrics(); err != nil {
+				return nil, fmt.Errorf("'RuntimeMetrics' failed: %w", err)
+			}
+		}
+
 		otel.SetMeterProvider(mp)
 	}
 
