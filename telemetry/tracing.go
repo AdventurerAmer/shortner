@@ -6,54 +6,27 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/AdventurerAmer/shortner/config"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.43.0"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
 type TrackerConfig struct {
-	ServiceName    string
-	ServiceVersion string
-	Env            config.Env
-	OTLPEndpoint   string
-	SampleRatio    float64
+	OTLPEndpoint string
+	SampleRatio  float64
 }
 
-func NewTracker(ctx context.Context, cfg TrackerConfig) (*sdktrace.TracerProvider, error) {
-	var envAtrrib attribute.KeyValue
-	switch cfg.Env {
-	case config.EnvLocal:
-		envAtrrib = semconv.DeploymentEnvironmentNameDevelopment
-	case config.EnvStaging:
-		envAtrrib = semconv.DeploymentEnvironmentNameStaging
-	case config.EnvProd:
-		envAtrrib = semconv.DeploymentEnvironmentNameProduction
-	}
-	res, err := resource.Merge(
-		resource.Default(),
-		resource.NewWithAttributes(
-			semconv.SchemaURL,
-			semconv.ServiceName(cfg.ServiceName),
-			semconv.ServiceVersion(cfg.ServiceVersion),
-			envAtrrib,
-		),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("'resource.Merge' failed: %w", err)
-	}
-
+func NewTracker(ctx context.Context, res *resource.Resource, cfg TrackerConfig) (*sdktrace.TracerProvider, error) {
 	// OTLP gRPC exporter
 	conn, err := grpc.NewClient(
 		cfg.OTLPEndpoint,
-		grpc.WithTransportCredentials(insecure.NewCredentials()), // use TLS in real prod
+		grpc.WithTransportCredentials(insecure.NewCredentials()), // TODO: use TLS in real prod
 	)
 	if err != nil {
 		return nil, fmt.Errorf("'grpc.NewClient' failed: %w", err)

@@ -5,6 +5,7 @@ import "time"
 type ObservabilityConfig struct {
 	Logging      LoggingConfig      `koanf:"logging"`
 	Tracing      TracingConfig      `koanf:"tracing"`
+	Metrics      MetricsConfig      `koanf:"metrics"`
 	HealthChecks HealthChecksConfig `koanf:"healthChecks"`
 }
 
@@ -18,6 +19,11 @@ type TracingConfig struct {
 	Enabled    bool    `koanf:"enabled"`
 	Endpoint   string  `koanf:"endpoint" validate:"required,url"`
 	SampleRate float64 `koanf:"sampleRate" validate:"required,min=0.0,max=1.0"`
+}
+
+type MetricsConfig struct {
+	Enabled  bool   `koanf:"enabled"`
+	Endpoint string `koanf:"endpoint" validate:"required,url"`
 }
 
 type HealthChecksConfig struct {
