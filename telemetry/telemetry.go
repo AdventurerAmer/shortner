@@ -3,6 +3,7 @@ package telemetry
 import (
 	"context"
 	"fmt"
+	"runtime"
 
 	"github.com/AdventurerAmer/shortner/config"
 	"github.com/AdventurerAmer/shortner/logging"
@@ -18,6 +19,13 @@ import (
 var serviceName string
 
 type Shutdown = func(ctx context.Context)
+
+var (
+	AllocatedMemory Float64Guage
+	NumGorouties    Int64Guage
+	RequestsLatency Int64Histogram
+	RequestsCounter Int64Counter
+)
 
 func New(cfg *config.Config, Name, Version string) (Shutdown, error) {
 	serviceName = Name
@@ -79,9 +87,44 @@ func New(cfg *config.Config, Name, Version string) (Shutdown, error) {
 			return nil, fmt.Errorf("'NewPrometheus' failed: %w", err)
 		}
 
-		if cfg.Observability.Metrics.RuntimeMetrics {
-			if err := RuntimeMetrics(); err != nil {
-				return nil, fmt.Errorf("'RuntimeMetrics' failed: %w", err)
+		if cfg.Observability.Metrics.Runtime {
+			AllocatedMemory, err := NewFloat64Guage("allocated_memory", "Amount of memory used.", "MB")
+			if err != nil {
+				return nil, fmt.Errorf("failed to create allocated memory guage: %w", err)
+			}
+
+			if err := Observe(func(ctx context.Context, o Observer) error {
+				var stats runtime.MemStats
+				runtime.ReadMemStats(&stats)
+				allocatedMemoryMB := float64(stats.Sys) / 1_048_576 // Convert bytes to MB
+				ObserveFloat64(o, AllocatedMemory, allocatedMemoryMB)
+				return nil
+			}, AllocatedMemory); err != nil {
+				return nil, fmt.Errorf("failed to observe 'allocated_memory' guage: %w", err)
+			}
+
+			NumGorouties, err = NewInt64Guage("num_gorouties", "Number of running goruties.", "")
+			if err != nil {
+				return nil, fmt.Errorf("failed to create num gorouties guage: %w", err)
+			}
+
+			if err := Observe(func(ctx context.Context, o Observer) error {
+				ObserveInt64(o, NumGorouties, int64(runtime.NumGoroutine()))
+				return nil
+			}, NumGorouties); err != nil {
+				return nil, fmt.Errorf("failed to observe 'num_gorouties' guage: %w", err)
+			}
+		}
+
+		if cfg.Observability.Metrics.Requests {
+			RequestsLatency, err = NewInt64Hisogram("requests_latency", "The duration of requests", "ms")
+			if err != nil {
+				return nil, fmt.Errorf("failed to create requests histogram: %w", err)
+			}
+
+			RequestsCounter, err = NewInt64Counter("requests_total", "Total number of requests.")
+			if err != nil {
+				return nil, fmt.Errorf("failed to create requests counter: %w", err)
 			}
 		}
 

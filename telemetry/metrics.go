@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"runtime"
 	"time"
 
 	"go.opentelemetry.io/otel"
@@ -18,13 +17,6 @@ import (
 type MetricsConfig struct {
 	Endpoint string
 }
-
-var (
-	AllocatedMemory metric.Float64ObservableGauge
-	NumGorouties    metric.Int64ObservableGauge
-	RequestsLatency metric.Int64Histogram
-	RequestsCounter metric.Int64Counter
-)
 
 func NewPrometheus(ctx context.Context, res *resource.Resource, cfg MetricsConfig) (*sdkmetric.MeterProvider, error) {
 	// TODO: use TLS in real prod
@@ -45,57 +37,38 @@ func NewPrometheus(ctx context.Context, res *resource.Resource, cfg MetricsConfi
 	return mp, nil
 }
 
-func RuntimeMetrics() error {
+type Observer metric.Observer
+type Float64Observable = metric.Float64Observable
+type Int64Observable = metric.Int64Observable
+
+type ObserveCallback func(ctx context.Context, observer Observer) error
+
+func ObserveFloat64(observer Observer, observable Float64Observable, value float64) {
 	attributes := []attribute.KeyValue{
 		attribute.Key("application").String(serviceName),
 		attribute.Key("container_id").String(os.Getenv("HOSTNAME")),
 	}
+	observer.ObserveFloat64(observable, value, metric.WithAttributes(attributes...))
+}
 
-	meter := GetMeter()
-
-	AllocatedMemory, err := NewFloat64Guage("allocated_memory", "Amount of memory used.", "MB")
-	if err != nil {
-		return fmt.Errorf("failed to create allocated memory guage: %w", err)
+func ObserveInt64(observer Observer, observable Int64Observable, value int64) {
+	attributes := []attribute.KeyValue{
+		attribute.Key("application").String(serviceName),
+		attribute.Key("container_id").String(os.Getenv("HOSTNAME")),
 	}
+	observer.ObserveInt64(observable, value, metric.WithAttributes(attributes...))
+}
 
+func Observe(callback ObserveCallback, observables ...metric.Observable) error {
+	meter := GetMeter()
 	if _, err := meter.RegisterCallback(
 		func(ctx context.Context, o metric.Observer) error {
-			var stats runtime.MemStats
-			runtime.ReadMemStats(&stats)
-			allocatedMemoryMB := float64(stats.Sys) / 1_048_576 // Convert bytes to MB
-			o.ObserveFloat64(AllocatedMemory, allocatedMemoryMB, metric.WithAttributes(attributes...))
-			return nil
+			return callback(ctx, o)
 		},
-		AllocatedMemory,
+		observables...,
 	); err != nil {
 		return fmt.Errorf("failed to register allocated memory guage callback: %w", err)
 	}
-
-	NumGorouties, err = NewInt64Guage("num_gorouties", "Number of running goruties.", "")
-	if err != nil {
-		return fmt.Errorf("failed to create num gorouties guage: %w", err)
-	}
-
-	if _, err := meter.RegisterCallback(
-		func(ctx context.Context, o metric.Observer) error {
-			o.ObserveInt64(NumGorouties, int64(runtime.NumGoroutine()), metric.WithAttributes(attributes...))
-			return nil
-		},
-		NumGorouties,
-	); err != nil {
-		return fmt.Errorf("failed to create num gorouties guage: %w", err)
-	}
-
-	RequestsLatency, err = NewInt64Hisogram("requests_latency", "The duration of requests", "ms")
-	if err != nil {
-		return fmt.Errorf("failed to create requests histogram: %w", err)
-	}
-
-	RequestsCounter, err = NewInt64Counter("requests_total", "Total number of requests.")
-	if err != nil {
-		return fmt.Errorf("failed to create requests counter: %w", err)
-	}
-
 	return nil
 }
 

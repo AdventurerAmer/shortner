@@ -33,7 +33,7 @@ func New(workerCfg *config.WorkerConfig, cfg *config.Config, consumer ports.Cons
 func (app *App) Run(handler ports.ConsumerHandlerFunc) error {
 	logger := app.logger
 
-	shutdown, err := telemetry.New(app.cfg, "Worker", "0.0.1")
+	shutdown, err := telemetry.New(app.cfg, app.Name, app.Version)
 	if err != nil {
 		return fmt.Errorf("'telemetry.New' failed: %w", err)
 	}
@@ -52,33 +52,13 @@ func (app *App) Run(handler ports.ConsumerHandlerFunc) error {
 	msgCh := app.consumer.Receive(sigCtx)
 	done := make(chan struct{})
 
+	logger.Info("consumer started", "group", app.Group)
+	defer logger.Info("consumer ended", "group", app.Group)
+
 	go func() {
 		for msg := range msgCh {
-			if err := app.consumer.Consume(ctx, msg, handler); err != nil {
-				logger.Error("handle message failed", "error", err)
-				continue
-			}
-			var lastErr error
-			for range app.AckRetries {
-				err := func() error {
-					dctx, cancel := context.WithTimeout(ctx, app.AckTimeout)
-					defer cancel()
-					if err := app.consumer.Ack(dctx, msg); err != nil {
-						return fmt.Errorf("'consumer.Ack' failed: %w", err)
-					}
-					return nil
-				}()
-				if err != nil {
-					lastErr = err
-				} else {
-					lastErr = nil
-					break
-				}
-			}
-			if lastErr != nil {
-				logger.Error("ack message failed", "error", lastErr)
-			} else {
-				logger.Debug("acked message successfully")
+			if err := app.handleMsg(ctx, msg, handler); err != nil {
+				logger.Error("failed to handle message", "error", err)
 			}
 		}
 		close(done)
@@ -93,4 +73,44 @@ func (app *App) Run(handler ports.ConsumerHandlerFunc) error {
 	}
 
 	return nil
+}
+
+func (app *App) handleMsg(ctx context.Context, msg ports.ConsumerMessage, h ports.ConsumerHandlerFunc) error {
+	start := time.Now()
+
+	defer func() {
+		latency := time.Since(start).Milliseconds()
+		telemetry.RequestsLatency.Record(ctx, latency)
+		telemetry.RequestsCounter.Add(ctx, 1)
+	}()
+
+	if err := app.consumer.Consume(ctx, msg, h); err != nil {
+		return fmt.Errorf("'consumer.Consume' failed: %w", err)
+	}
+
+	if err := app.ackMsg(ctx, msg); err != nil {
+		return fmt.Errorf("'app.ackMsg' failed: %w", err)
+	}
+
+	return nil
+}
+
+func (app *App) ackMsg(ctx context.Context, msg ports.ConsumerMessage) error {
+	var lastErr error
+	for range app.AckRetries {
+		err := func() error {
+			dctx, cancel := context.WithTimeout(ctx, app.AckTimeout)
+			defer cancel()
+			if err := app.consumer.Ack(dctx, msg); err != nil {
+				return fmt.Errorf("'consumer.Ack' failed: %w", err)
+			}
+			return nil
+		}()
+		if err != nil {
+			lastErr = err
+		} else {
+			return nil
+		}
+	}
+	return fmt.Errorf("'consumer.Ack' failed: %w", lastErr)
 }

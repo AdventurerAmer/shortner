@@ -15,29 +15,28 @@ import (
 )
 
 type App struct {
-	cfg        *config.Config
-	serviceCfg *config.ServiceConfig
-	logger     *logging.Logger
+	*config.ServiceConfig
+	cfg    *config.Config
+	logger *logging.Logger
 }
 
-func New(cfg *config.Config, serviceCfg *config.ServiceConfig, logger *logging.Logger) *App {
+func New(serviceCfg *config.ServiceConfig, cfg *config.Config, logger *logging.Logger) *App {
 	app := &App{
-		cfg:        cfg,
-		serviceCfg: serviceCfg,
-		logger:     logger,
+		ServiceConfig: serviceCfg,
+		cfg:           cfg,
+		logger:        logger,
 	}
 	return app
 }
 
 func (app *App) Run(router http.Handler) error {
-	cfg := app.serviceCfg
 	logger := app.logger
 
-	// TODO: hardcoding version here
-	shutdown, err := telemetry.New(app.cfg, app.serviceCfg.Name, "0.0.1")
+	shutdown, err := telemetry.New(app.cfg, app.Name, app.Version)
 	if err != nil {
 		return fmt.Errorf("'telemetry.New' failed: %w", err)
 	}
+
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
@@ -45,13 +44,13 @@ func (app *App) Run(router http.Handler) error {
 	}()
 
 	srv := &http.Server{
-		Addr:              fmt.Sprintf(":%d", cfg.Port),
+		Addr:              fmt.Sprintf(":%d", app.Port),
 		Handler:           router,
-		MaxHeaderBytes:    cfg.MaxHeaderBytes,
-		ReadHeaderTimeout: cfg.ReadHeaderTimeout,
-		ReadTimeout:       cfg.ReadTimeout,
-		WriteTimeout:      cfg.WriteTimeout,
-		IdleTimeout:       cfg.IdleTimeout,
+		MaxHeaderBytes:    app.MaxHeaderBytes,
+		ReadHeaderTimeout: app.ReadHeaderTimeout,
+		ReadTimeout:       app.ReadTimeout,
+		WriteTimeout:      app.WriteTimeout,
+		IdleTimeout:       app.IdleTimeout,
 	}
 
 	sigCtx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
@@ -60,8 +59,8 @@ func (app *App) Run(router http.Handler) error {
 	errCh := make(chan error, 1)
 
 	go func() {
-		logger.Info("http server started", "port", cfg.Port)
-		defer logger.Info("http server ended", "port", cfg.Port)
+		logger.Info("http server started", "port", app.Port)
+		defer logger.Info("http server ended", "port", app.Port)
 
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			errCh <- err
@@ -75,7 +74,7 @@ func (app *App) Run(router http.Handler) error {
 		logger.Info("graceful shutdown started")
 		defer logger.Info("graceful shutdown ended")
 
-		ctx, cancel := context.WithTimeout(context.Background(), cfg.GracefulShutdownTimeout)
+		ctx, cancel := context.WithTimeout(context.Background(), app.GracefulShutdownTimeout)
 		defer cancel()
 
 		if err := srv.Shutdown(ctx); err != nil {

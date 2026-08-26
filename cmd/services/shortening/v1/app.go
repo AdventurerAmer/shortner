@@ -61,12 +61,13 @@ func Run() int {
 	mux := web.NewMux(logger)
 	mux.Use(web.Trace)
 	mux.Use(web.Logging)
+	mux.Use(web.Measure)
 	mux.Use(web.Recover(cfg.Env))
 	mux.Use(web.Timeout(serviceCfg.DefaultTimeout))
 
 	mux.Post("/v1/shorten", handlers.shorten)
 
-	app := web.New(cfg, serviceCfg, logger)
+	app := web.New(serviceCfg, cfg, logger)
 	if err := app.Run(mux); err != nil {
 		logger.Error("'app.Run' failed", "error", err)
 		return 1

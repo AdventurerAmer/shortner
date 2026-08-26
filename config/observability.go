@@ -22,9 +22,10 @@ type TracingConfig struct {
 }
 
 type MetricsConfig struct {
-	Enabled        bool   `koanf:"enabled"`
-	Endpoint       string `koanf:"endpoint" validate:"required,url"`
-	RuntimeMetrics bool   `koanf:"runtimeMetrics"`
+	Enabled  bool   `koanf:"enabled"`
+	Endpoint string `koanf:"endpoint" validate:"required,url"`
+	Runtime  bool   `koanf:"runtime"`
+	Requests bool   `koanf:"requests"`
 }
 
 type HealthChecksConfig struct {

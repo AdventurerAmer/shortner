@@ -58,6 +58,7 @@ func Run() int {
 	mux := web.NewMux(logger)
 
 	mux.Use(web.Trace)
+	mux.Use(web.Measure)
 	mux.Use(web.Logging)
 	mux.Use(web.Recover(cfg.Env))
 	mux.Use(web.Timeout(serviceCfg.DefaultTimeout))
@@ -66,7 +67,7 @@ func Run() int {
 
 	mux.Get("/v1/analytics/{alias}", handlers.get)
 
-	app := web.New(cfg, serviceCfg, logger)
+	app := web.New(serviceCfg, cfg, logger)
 	if err := app.Run(mux); err != nil {
 		logger.Error("'app.Run' failed", "error", err)
 		return 1
