@@ -35,6 +35,7 @@ type Config struct {
 	Observability  ObservabilityConfig  `koanf:"observability"`
 	Services       ServicesConfig       `koanf:"services"`
 	Workers        WorkersConfig        `koanf:"workers"`
+	Constants      Constants            `koanf:"constants"`
 }
 
 type AppConfig struct {

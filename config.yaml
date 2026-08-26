@@ -26,3 +26,6 @@ workers:
     name: clicksBatcher
     group: analytics
     topic: clicksBatch
+  
+constants:
+  analyticClicksCacheTTL: 5s

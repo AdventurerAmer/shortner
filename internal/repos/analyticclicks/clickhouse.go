@@ -47,17 +47,21 @@ func (repo *clickHouseRepo) Get(ctx context.Context, alias string) (*domain.Anal
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, errs.NewNotFound(err, "analytic clicks not found")
 		}
+
 		if errors.Is(err, context.DeadlineExceeded) {
 			return nil, errs.NewTimeout(err)
 		}
+
 		if exception, ok := err.(*clickhouse.Exception); ok {
 			switch exception.Code {
 			case 159:
 				return nil, errs.NewTimeout(err)
 			}
 		}
+
 		return nil, fmt.Errorf("'row.Scan' failed: %w", err)
 	}
+
 	if errs.IsNotFound(cacheErr) {
 		if err := repo.cache.Put(ctx, alias, stat, repo.ttl); err != nil {
 			logger := logging.Get(ctx)

@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/AdventurerAmer/shortner/errs"
 	"github.com/AdventurerAmer/shortner/internal/core/domain"
@@ -85,8 +84,8 @@ func (repo *cassandraRepo) Get(ctx context.Context, alias string) (*domain.URLMa
 		return nil, fmt.Errorf("'ScanContext' failed: %w", err)
 	}
 	if errs.IsNotFound(cacheErr) {
-		ttl := 10 * time.Minute // TODO: hardcoding TTL
-		if err := repo.cache.Put(dctx, alias, m, ttl); err != nil {
+		// value of zero here indication a no TTL
+		if err := repo.cache.Put(dctx, alias, m, 0); err != nil {
 			logger := logging.Get(dctx)
 			logger.Error("failed to set cache entry", "key", alias, "error", err)
 		}

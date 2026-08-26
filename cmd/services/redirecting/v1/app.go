@@ -39,7 +39,7 @@ func Run() int {
 		logger.Error("'infra.New()' failed", "error", err)
 		return 1
 	}
-	inf.BindRedis(cfg.Infrastructure.RedisAnalytics, &redisCtx)
+	inf.BindRedis(cfg.Infrastructure.Redis, &redisCtx)
 	inf.BindCassandra(cfg.Infrastructure.Cassandra, &cassandraCtx)
 
 	if err := inf.Start(context.Background()); err != nil {
