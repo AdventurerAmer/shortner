@@ -65,3 +65,14 @@ func (c *Cassandra) Execute(ctx context.Context, query string) error {
 	}
 	return nil
 }
+
+func (c *Cassandra) Ping(ctx context.Context) error {
+	var releaseVersion string
+	// system.local is always accessible by any authenticated user
+	query := c.Session.Query("SELECT release_version FROM system.local").
+		Consistency(gocql.One)
+	if err := query.ScanContext(ctx, &releaseVersion); err != nil {
+		return fmt.Errorf("'query.ScanContext' failed: %w", err)
+	}
+	return nil
+}

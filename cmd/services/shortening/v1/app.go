@@ -56,6 +56,13 @@ func Run() int {
 	}
 	service := shortening.New(shorteningCfg)
 
+	readiness := func(ctx context.Context) error {
+		if err := cassandraCtx.Ping(ctx); err != nil {
+			return fmt.Errorf("'cassandraCtx.Ping' failed: %w", err)
+		}
+		return nil
+	}
+
 	handlers := NewHandlers(service)
 
 	mux := web.NewMux(logger)
@@ -68,7 +75,7 @@ func Run() int {
 	mux.Post("/v1/shorten", handlers.shorten)
 
 	app := web.New(serviceCfg, cfg, logger)
-	if err := app.Run(mux); err != nil {
+	if err := app.Run(mux, readiness); err != nil {
 		logger.Error("'app.Run' failed", "error", err)
 		return 1
 	}

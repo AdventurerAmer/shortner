@@ -2,10 +2,12 @@ package web
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"os/signal"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -14,10 +16,14 @@ import (
 	"github.com/AdventurerAmer/shortner/telemetry"
 )
 
+type ReadinessHandler func(ctx context.Context) error
+
 type App struct {
 	*config.ServiceConfig
-	cfg    *config.Config
-	logger *logging.Logger
+	cfg          *config.Config
+	logger       *logging.Logger
+	ready        atomic.Bool
+	shuttingDown atomic.Bool
 }
 
 func New(serviceCfg *config.ServiceConfig, cfg *config.Config, logger *logging.Logger) *App {
@@ -29,13 +35,45 @@ func New(serviceCfg *config.ServiceConfig, cfg *config.Config, logger *logging.L
 	return app
 }
 
-func (app *App) Run(router http.Handler) error {
+func (app *App) Run(mux *Mux, readiness ReadinessHandler) error {
 	logger := app.logger
 
 	shutdown, err := telemetry.New(app.cfg, app.Name, app.Version)
 	if err != nil {
 		return fmt.Errorf("'telemetry.New' failed: %w", err)
 	}
+
+	livez := func(w http.ResponseWriter, r *http.Request) {
+		// Pure liveness: process is running.
+		// Optional: add a very cheap deadlock detector or goroutine count guard.
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("ok"))
+	}
+	mux.serveMux.HandleFunc("/livez", livez)
+
+	readyz := func(w http.ResponseWriter, r *http.Request) {
+		if app.shuttingDown.Load() || !app.ready.Load() {
+			http.Error(w, "not ready", http.StatusServiceUnavailable)
+			return
+		}
+
+		ctx, cancel := context.WithTimeout(r.Context(), 200*time.Millisecond)
+		defer cancel()
+
+		if err := readiness(ctx); err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusServiceUnavailable)
+			json.NewEncoder(w).Encode(map[string]any{
+				"status": "not_ready",
+				"checks": map[string]string{"database": err.Error()},
+			})
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]string{"status": "ready"})
+	}
+	mux.serveMux.HandleFunc("/readyz", readyz)
 
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
@@ -45,7 +83,7 @@ func (app *App) Run(router http.Handler) error {
 
 	srv := &http.Server{
 		Addr:              fmt.Sprintf(":%d", app.Port),
-		Handler:           router,
+		Handler:           mux,
 		MaxHeaderBytes:    app.MaxHeaderBytes,
 		ReadHeaderTimeout: app.ReadHeaderTimeout,
 		ReadTimeout:       app.ReadTimeout,
@@ -67,10 +105,14 @@ func (app *App) Run(router http.Handler) error {
 		}
 	}()
 
+	app.ready.Store(true)
+
 	select {
 	case err := <-errCh:
 		return err
 	case <-sigCtx.Done():
+		app.shuttingDown.Store(true)
+
 		logger.Info("graceful shutdown started")
 		defer logger.Info("graceful shutdown ended")
 

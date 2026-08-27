@@ -55,6 +55,17 @@ func Run() int {
 	}
 	service := analytics.New(analyticsCfg)
 
+	readiness := func(ctx context.Context) error {
+		if err := clickHouseCtx.Conn.Ping(ctx); err != nil {
+			return fmt.Errorf("'clickHouseCtx.Conn.Ping' failed: %w", err)
+		}
+
+		if _, err := redisCtx.Client.Ping(ctx).Result(); err != nil {
+			return fmt.Errorf("'redisCtx.Client.Ping' failed: %w", err)
+		}
+		return nil
+	}
+
 	mux := web.NewMux(logger)
 
 	mux.Use(web.Trace)
@@ -68,7 +79,7 @@ func Run() int {
 	mux.Get("/v1/analytics/{alias}", handlers.get)
 
 	app := web.New(serviceCfg, cfg, logger)
-	if err := app.Run(mux); err != nil {
+	if err := app.Run(mux, readiness); err != nil {
 		logger.Error("'app.Run' failed", "error", err)
 		return 1
 	}

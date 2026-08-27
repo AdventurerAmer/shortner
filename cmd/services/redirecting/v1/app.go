@@ -76,6 +76,21 @@ func Run() int {
 		return 1
 	}
 
+	readiness := func(ctx context.Context) error {
+		if err := cassandraCtx.Ping(ctx); err != nil {
+			return fmt.Errorf("'cassandraCtx.Ping' failed: %w", err)
+		}
+		if _, err := redisCtx.Client.Ping(ctx).Result(); err != nil {
+			return fmt.Errorf("'redisCtx.Client.Ping' failed: %w", err)
+		}
+
+		if err := infra.PingKafka(ctx, cfg.Infrastructure.Kafka); err != nil {
+			return fmt.Errorf("'infra.PingKafka' failed: %w", err)
+		}
+
+		return nil
+	}
+
 	handlers := newHandlers(service, eventProducer)
 
 	mux := web.NewMux(logger)
@@ -89,7 +104,7 @@ func Run() int {
 	mux.Get("/v1/redirect/{alias}", handlers.redirect)
 
 	app := web.New(serviceCfg, cfg, logger)
-	if err := app.Run(mux); err != nil {
+	if err := app.Run(mux, readiness); err != nil {
 		logger.Error("'app.Run' failed", "error", err)
 		return 1
 	}

@@ -1,50 +1,14 @@
 package errs
 
-import "encoding/json"
-
-type Code int
+type Code string
 
 const (
-	CodeUnknown               Code = 0
-	CodeInternal              Code = 1
-	CodeValidation            Code = 2
-	CodeResourceNotFound      Code = 3
-	CodeResourceAlreadyExists Code = 4
-	CodeTimeout               Code = 5
-	CodeUnsupportedFormat     Code = 6
+	CodeUnknown               Code = "UNKNOWN"
+	CodeInternal              Code = "INTERNAL"
+	CodeValidation            Code = "VALIDATION"
+	CodeResourceNotFound      Code = "RESOURCE_NOT_FOUND"
+	CodeResourceAlreadyExists Code = "RESOURCE_ALREADY_EXISTS"
+	CodeTimeout               Code = "TIMEOUT"
+	CodeUnsupportedFormat     Code = "UNSUPPORTED_FORMAT"
+	CodeServiceUnavailable    Code = "SERVICE_UNAVAILABLE"
 )
-
-var codeToStr = map[Code]string{
-	CodeUnknown:               "UNKNOWN",
-	CodeInternal:              "INTERNAL",
-	CodeValidation:            "VALIDATION",
-	CodeResourceNotFound:      "RESOURCE_NOT_FOUND",
-	CodeResourceAlreadyExists: "RESOURCE_ALREADY_EXISTS",
-	CodeTimeout:               "TIMEOUT",
-	CodeUnsupportedFormat:     "UNSUPPORTED_FORMAT",
-}
-var strToCode = make(map[string]Code)
-
-func init() {
-	for c := range codeToStr {
-		s := codeToStr[c]
-		strToCode[s] = c
-	}
-}
-
-func (c Code) String() string {
-	return codeToStr[c]
-}
-
-func (c Code) MarshalJSON() ([]byte, error) {
-	return json.Marshal(c.String())
-}
-
-func (c *Code) UnmarshalJSON(b []byte) error {
-	var s string
-	if err := json.Unmarshal(b, &s); err != nil {
-		return err
-	}
-	*c = strToCode[s]
-	return nil
-}

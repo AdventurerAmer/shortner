@@ -25,6 +25,7 @@ type Mux struct {
 
 func NewMux(logger *logging.Logger) *Mux {
 	serveMux := &http.ServeMux{}
+
 	return &Mux{
 		logger:   logger,
 		serveMux: serveMux,

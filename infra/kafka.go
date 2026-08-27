@@ -1,6 +1,7 @@
 package infra
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -59,4 +60,27 @@ func NewKafkaReader(cfg config.KafkaConfig, topic domain.Topic, groupId string) 
 	}
 	reader := kafka.NewReader(readerCfg)
 	return reader
+}
+
+func PingKafka(ctx context.Context, cfg config.KafkaConfig) error {
+	// 1. Initialize a dialer with a strict timeout
+	dialer := &kafka.Dialer{
+		DualStack: true,
+	}
+
+	addr := fmt.Sprintf("%s:%d", cfg.Host, cfg.Port)
+
+	// 2. Connect to the leader/broker
+	conn, err := dialer.DialContext(ctx, "tcp", addr)
+	if err != nil {
+		return fmt.Errorf("failed to connect to broker: %w", err)
+	}
+	defer conn.Close()
+
+	// 3. Request broker metadata to prove Kafka is processing requests
+	if _, err := conn.ReadPartitions(); err != nil {
+		return fmt.Errorf("failed to fetch metadata from kafka: %w", err)
+	}
+
+	return nil
 }
