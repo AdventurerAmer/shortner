@@ -3,7 +3,6 @@ package errs
 type Code string
 
 const (
-	CodeUnknown               Code = "UNKNOWN"
 	CodeInternal              Code = "INTERNAL"
 	CodeValidation            Code = "VALIDATION"
 	CodeResourceNotFound      Code = "RESOURCE_NOT_FOUND"

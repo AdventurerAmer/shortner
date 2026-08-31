@@ -9,6 +9,7 @@ import (
 	"github.com/AdventurerAmer/shortner/apps/web"
 	"github.com/AdventurerAmer/shortner/async/goorch"
 	"github.com/AdventurerAmer/shortner/config"
+	"github.com/AdventurerAmer/shortner/health"
 	"github.com/AdventurerAmer/shortner/infra"
 	"github.com/AdventurerAmer/shortner/internal/brokers"
 	"github.com/AdventurerAmer/shortner/internal/caches"
@@ -76,17 +77,27 @@ func Run() int {
 		return 1
 	}
 
-	readiness := func(ctx context.Context) error {
+	readiness := func(ctx context.Context, checks health.Checks) error {
 		if err := cassandraCtx.Ping(ctx); err != nil {
+			checks["cassandra"] = err.Error()
 			return fmt.Errorf("'cassandraCtx.Ping' failed: %w", err)
 		}
+
+		checks["cassandra"] = "up"
+
 		if _, err := redisCtx.Client.Ping(ctx).Result(); err != nil {
+			checks["redis"] = err.Error()
 			return fmt.Errorf("'redisCtx.Client.Ping' failed: %w", err)
 		}
 
+		checks["redis"] = "up"
+
 		if err := infra.PingKafka(ctx, cfg.Infrastructure.Kafka); err != nil {
+			checks["kafka"] = err.Error()
 			return fmt.Errorf("'infra.PingKafka' failed: %w", err)
 		}
+
+		checks["kafka"] = "up"
 
 		return nil
 	}

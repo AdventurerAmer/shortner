@@ -8,6 +8,7 @@ import (
 
 	"github.com/AdventurerAmer/shortner/apps/web"
 	"github.com/AdventurerAmer/shortner/config"
+	"github.com/AdventurerAmer/shortner/health"
 	"github.com/AdventurerAmer/shortner/infra"
 	"github.com/AdventurerAmer/shortner/internal/core/ports"
 	"github.com/AdventurerAmer/shortner/internal/core/services/shortening"
@@ -56,10 +57,12 @@ func Run() int {
 	}
 	service := shortening.New(shorteningCfg)
 
-	readiness := func(ctx context.Context) error {
+	readiness := func(ctx context.Context, checks health.Checks) error {
 		if err := cassandraCtx.Ping(ctx); err != nil {
+			checks["cassandra"] = err.Error()
 			return fmt.Errorf("'cassandraCtx.Ping' failed: %w", err)
 		}
+		checks["cassandra"] = "up"
 		return nil
 	}
 

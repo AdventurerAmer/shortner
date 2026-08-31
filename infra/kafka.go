@@ -7,14 +7,15 @@ import (
 
 	"github.com/AdventurerAmer/shortner/config"
 	"github.com/AdventurerAmer/shortner/internal/core/domain"
+	"github.com/AdventurerAmer/shortner/logging"
 	"github.com/segmentio/kafka-go"
 	"github.com/segmentio/kafka-go/sasl/plain"
 )
 
 func NewKafkaWriter(cfg config.KafkaConfig, topic domain.Topic) *kafka.Writer {
 	mechanism := plain.Mechanism{
-		Username: "admin",
-		Password: "admin",
+		Username: cfg.Username,
+		Password: cfg.Password,
 	}
 
 	dialer := &kafka.Dialer{
@@ -38,8 +39,8 @@ func NewKafkaWriter(cfg config.KafkaConfig, topic domain.Topic) *kafka.Writer {
 
 func NewKafkaReader(cfg config.KafkaConfig, topic domain.Topic, groupId string) *kafka.Reader {
 	mechanism := plain.Mechanism{
-		Username: "admin",
-		Password: "admin",
+		Username: cfg.Username,
+		Password: cfg.Password,
 	}
 
 	dialer := &kafka.Dialer{
@@ -63,21 +64,29 @@ func NewKafkaReader(cfg config.KafkaConfig, topic domain.Topic, groupId string) 
 }
 
 func PingKafka(ctx context.Context, cfg config.KafkaConfig) error {
-	// 1. Initialize a dialer with a strict timeout
+	mechanism := plain.Mechanism{
+		Username: cfg.Username,
+		Password: cfg.Password,
+	}
+
 	dialer := &kafka.Dialer{
-		DualStack: true,
+		DualStack:     true,
+		SASLMechanism: mechanism,
 	}
 
 	addr := fmt.Sprintf("%s:%d", cfg.Host, cfg.Port)
 
-	// 2. Connect to the leader/broker
 	conn, err := dialer.DialContext(ctx, "tcp", addr)
 	if err != nil {
 		return fmt.Errorf("failed to connect to broker: %w", err)
 	}
-	defer conn.Close()
+	defer func() {
+		if err := conn.Close(); err != nil {
+			logger := logging.Get(ctx)
+			logger.Error("'conn.Close' from PingKafka failed", "error", err)
+		}
+	}()
 
-	// 3. Request broker metadata to prove Kafka is processing requests
 	if _, err := conn.ReadPartitions(); err != nil {
 		return fmt.Errorf("failed to fetch metadata from kafka: %w", err)
 	}

@@ -2,28 +2,24 @@ package web
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"os/signal"
-	"sync/atomic"
 	"syscall"
 	"time"
 
 	"github.com/AdventurerAmer/shortner/config"
+	"github.com/AdventurerAmer/shortner/health"
 	"github.com/AdventurerAmer/shortner/logging"
 	"github.com/AdventurerAmer/shortner/telemetry"
 )
 
-type ReadinessHandler func(ctx context.Context) error
-
 type App struct {
 	*config.ServiceConfig
-	cfg          *config.Config
-	logger       *logging.Logger
-	ready        atomic.Bool
-	shuttingDown atomic.Bool
+	cfg    *config.Config
+	logger *logging.Logger
+	health health.Checker
 }
 
 func New(serviceCfg *config.ServiceConfig, cfg *config.Config, logger *logging.Logger) *App {
@@ -35,51 +31,55 @@ func New(serviceCfg *config.ServiceConfig, cfg *config.Config, logger *logging.L
 	return app
 }
 
-func (app *App) Run(mux *Mux, readiness ReadinessHandler) error {
+func (app *App) Run(mux *Mux, readiness health.ReadinessHandler) error {
 	logger := app.logger
 
-	shutdown, err := telemetry.New(app.cfg, app.Name, app.Version)
+	telShutdown, err := telemetry.New(app.cfg, app.Name, app.Version)
 	if err != nil {
 		return fmt.Errorf("'telemetry.New' failed: %w", err)
 	}
+	defer func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		telShutdown(ctx)
+	}()
 
 	livez := func(w http.ResponseWriter, r *http.Request) {
 		// Pure liveness: process is running.
 		// Optional: add a very cheap deadlock detector or goroutine count guard.
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("ok"))
+		resp := health.LivenessCheck{
+			Status: health.LivenessStatusUp,
+		}
+		writeJSON(resp, w)
 	}
 	mux.serveMux.HandleFunc("/livez", livez)
 
 	readyz := func(w http.ResponseWriter, r *http.Request) {
-		if app.shuttingDown.Load() || !app.ready.Load() {
-			http.Error(w, "not ready", http.StatusServiceUnavailable)
+		if app.health.IsNotReady() {
+			resp := health.ReadinessCheck{
+				Status: health.ReadinessStatusNotReady,
+			}
+			w.WriteHeader(http.StatusServiceUnavailable)
+			writeJSON(resp, w)
 			return
 		}
 
-		ctx, cancel := context.WithTimeout(r.Context(), 200*time.Millisecond)
+		ctx, cancel := context.WithTimeout(r.Context(), app.HealthCheckTimeout)
 		defer cancel()
 
-		if err := readiness(ctx); err != nil {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusServiceUnavailable)
-			json.NewEncoder(w).Encode(map[string]any{
-				"status": "not_ready",
-				"checks": map[string]string{"database": err.Error()},
-			})
+		resp := health.ReadinessCheck{
+			Status: health.ReadinessStatusReady,
+			Checks: make(health.Checks),
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]string{"status": "ready"})
+		if err := readiness(ctx, resp.Checks); err != nil {
+			resp.Status = health.ReadinessStatusNotReady
+			w.WriteHeader(http.StatusServiceUnavailable)
+		}
+
+		writeJSON(resp, w)
 	}
 	mux.serveMux.HandleFunc("/readyz", readyz)
-
-	defer func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-		defer cancel()
-		shutdown(ctx)
-	}()
 
 	srv := &http.Server{
 		Addr:              fmt.Sprintf(":%d", app.Port),
@@ -105,13 +105,13 @@ func (app *App) Run(mux *Mux, readiness ReadinessHandler) error {
 		}
 	}()
 
-	app.ready.Store(true)
+	app.health.Ready()
 
 	select {
 	case err := <-errCh:
 		return err
 	case <-sigCtx.Done():
-		app.shuttingDown.Store(true)
+		app.health.Shutdown()
 
 		logger.Info("graceful shutdown started")
 		defer logger.Info("graceful shutdown ended")

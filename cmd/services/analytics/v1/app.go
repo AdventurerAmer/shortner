@@ -8,6 +8,7 @@ import (
 
 	"github.com/AdventurerAmer/shortner/apps/web"
 	"github.com/AdventurerAmer/shortner/config"
+	"github.com/AdventurerAmer/shortner/health"
 	"github.com/AdventurerAmer/shortner/infra"
 	"github.com/AdventurerAmer/shortner/internal/caches"
 	"github.com/AdventurerAmer/shortner/internal/core/services/analytics"
@@ -55,14 +56,20 @@ func Run() int {
 	}
 	service := analytics.New(analyticsCfg)
 
-	readiness := func(ctx context.Context) error {
+	readiness := func(ctx context.Context, checks health.Checks) error {
 		if err := clickHouseCtx.Conn.Ping(ctx); err != nil {
+			checks["clickhouse"] = err.Error()
 			return fmt.Errorf("'clickHouseCtx.Conn.Ping' failed: %w", err)
 		}
+		checks["clickhouse"] = "up"
 
 		if _, err := redisCtx.Client.Ping(ctx).Result(); err != nil {
+			checks["redis"] = err.Error()
 			return fmt.Errorf("'redisCtx.Client.Ping' failed: %w", err)
 		}
+
+		checks["redis"] = "up"
+
 		return nil
 	}
 

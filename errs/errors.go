@@ -3,11 +3,7 @@ package errs
 import "errors"
 
 func NewInternal(err error) *Error {
-	return &Error{
-		Code:    CodeInternal,
-		Message: "internal server error",
-		Err:     err,
-	}
+	return Wrap(err, CodeInternal, "internal server error")
 }
 
 func NewValidation(fields map[string]string) *Error {
@@ -28,34 +24,46 @@ func NewTimeout(err error) *Error {
 	return Wrap(err, CodeTimeout, "timeout")
 }
 
-func IsNotFound(err error) bool {
+func NewUnsupportedFormat(err error) *Error {
+	return Wrap(err, CodeUnsupportedFormat, "unsupported format")
+}
+
+func NewServiceUnavailable(err error) *Error {
+	return Wrap(err, CodeServiceUnavailable, "service unavailable")
+}
+
+func Is(err error, code Code) bool {
 	var e *Error
-	if errors.As(err, &e) && e.Code == CodeResourceNotFound {
+	if errors.As(err, &e) && e.Code == code {
 		return true
 	}
 	return false
+}
+
+func IsInternal(err error) bool {
+	return Is(err, CodeInternal)
+}
+
+func IsNotFound(err error) bool {
+	return Is(err, CodeResourceNotFound)
 }
 
 func IsValidation(err error) bool {
-	var e *Error
-	if errors.As(err, &e) && e.Code == CodeValidation {
-		return true
-	}
-	return false
+	return Is(err, CodeValidation)
 }
 
 func IsAlreadyExists(err error) bool {
-	var e *Error
-	if errors.As(err, &e) && e.Code == CodeResourceAlreadyExists {
-		return true
-	}
-	return false
+	return Is(err, CodeResourceAlreadyExists)
 }
 
 func IsTimeout(err error) bool {
-	var e *Error
-	if errors.As(err, &e) && e.Code == CodeTimeout {
-		return true
-	}
-	return false
+	return Is(err, CodeTimeout)
+}
+
+func IsUnsupportedFormat(err error) bool {
+	return Is(err, CodeUnsupportedFormat)
+}
+
+func IsServiceUnavailable(err error) bool {
+	return Is(err, CodeServiceUnavailable)
 }
