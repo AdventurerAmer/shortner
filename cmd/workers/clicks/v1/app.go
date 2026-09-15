@@ -36,7 +36,7 @@ func Run() int {
 		logger.Error("'infra.New()' failed", "error", err)
 		return 1
 	}
-	inf.BindClickHouse(cfg.Infrastructure.ClickHouse, &clickHouseCtx)
+	inf.BindClickHouse(cfg.Infra.ClickHouse, &clickHouseCtx)
 
 	if err := inf.Start(context.Background()); err != nil {
 		logger.Error("infrastructure connection failed", "error", err)
@@ -45,9 +45,9 @@ func Run() int {
 	defer inf.Shutdown(context.Background())
 
 	analyticClicksRepo := analyticclicks.NewClickHouse(
-		cfg.Infrastructure.ClickHouse.Database, clickHouseCtx.Conn, ports.NewCacheStub(), time.Second)
+		cfg.Infra.ClickHouse.Database, clickHouseCtx.Conn, ports.NewCacheStub(), time.Second)
 
-	reader := infra.NewKafkaReader(cfg.Infrastructure.Kafka, domain.Topic(workerCfg.Topic), workerCfg.Group)
+	reader := infra.NewKafkaReader(cfg.Infra.Kafka, domain.Topic(workerCfg.Topic), workerCfg.Group)
 	defer func() {
 		if err := reader.Close(); err != nil {
 			logger.Error("'reader.Close' failed", "error", err)

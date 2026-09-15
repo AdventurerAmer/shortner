@@ -30,7 +30,7 @@ func main() {
 		logger.Error("'infra.New()' failed", "error", err)
 		os.Exit(1)
 	}
-	inf.BindCassandra(cfg.Infrastructure.Cassandra, &cassandraCtx)
+	inf.BindCassandra(cfg.Infra.Cassandra, &cassandraCtx)
 
 	if err := inf.Start(context.Background()); err != nil {
 		logger.Error("infrastructure connection failed", "error", err)

@@ -37,7 +37,7 @@ func TestShorteningService_CassandraRepo(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	keyspace := cfg.Infrastructure.Cassandra.Keyspace
+	keyspace := cfg.Infra.Cassandra.Keyspace
 	repo := urlmapping.NewCassandra(cassandra.Session, keyspace, ports.NewCacheStub())
 
 	srvCfg := Config{

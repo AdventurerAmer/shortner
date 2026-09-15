@@ -11,7 +11,7 @@ import (
 )
 
 type clickHouseConfigWrapper struct {
-	config.ClickHouseConfig
+	config.ClickHouse
 }
 
 func (cfg *clickHouseConfigWrapper) Connect(ctx context.Context) (Disconnecter, error) {

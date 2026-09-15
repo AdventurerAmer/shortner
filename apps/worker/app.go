@@ -14,18 +14,18 @@ import (
 )
 
 type App struct {
-	*config.WorkerConfig
+	*config.Worker
 	cfg      *config.Config
 	consumer ports.Consumer
 	logger   *logging.Logger
 }
 
-func New(workerCfg *config.WorkerConfig, cfg *config.Config, consumer ports.Consumer, logger *logging.Logger) *App {
+func New(workerCfg *config.Worker, cfg *config.Config, consumer ports.Consumer, logger *logging.Logger) *App {
 	app := &App{
-		WorkerConfig: workerCfg,
-		cfg:          cfg,
-		consumer:     consumer,
-		logger:       logger,
+		Worker:   workerCfg,
+		cfg:      cfg,
+		consumer: consumer,
+		logger:   logger,
 	}
 	return app
 }

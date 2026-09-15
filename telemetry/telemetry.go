@@ -38,7 +38,7 @@ func New(cfg *config.Config, Name, Version string) (Shutdown, error) {
 		envAtrrib = semconv.DeploymentEnvironmentNameDevelopment
 	case config.EnvStaging:
 		envAtrrib = semconv.DeploymentEnvironmentNameStaging
-	case config.EnvProd:
+	case config.EnvProduction:
 		envAtrrib = semconv.DeploymentEnvironmentNameProduction
 	}
 	res, err := resource.Merge(

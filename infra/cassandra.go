@@ -11,7 +11,7 @@ import (
 )
 
 type cassandraConfigWrapper struct {
-	config.CassandraConfig
+	config.Cassandra
 }
 
 func (cfg *cassandraConfigWrapper) Connect(ctx context.Context) (Disconnecter, error) {

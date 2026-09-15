@@ -12,7 +12,7 @@ import (
 	"github.com/segmentio/kafka-go/sasl/plain"
 )
 
-func NewKafkaWriter(cfg config.KafkaConfig, topic domain.Topic) *kafka.Writer {
+func NewKafkaWriter(cfg config.Kafka, topic domain.Topic) *kafka.Writer {
 	mechanism := plain.Mechanism{
 		Username: cfg.Username,
 		Password: cfg.Password,
@@ -37,7 +37,7 @@ func NewKafkaWriter(cfg config.KafkaConfig, topic domain.Topic) *kafka.Writer {
 	return writer
 }
 
-func NewKafkaReader(cfg config.KafkaConfig, topic domain.Topic, groupId string) *kafka.Reader {
+func NewKafkaReader(cfg config.Kafka, topic domain.Topic, groupId string) *kafka.Reader {
 	mechanism := plain.Mechanism{
 		Username: cfg.Username,
 		Password: cfg.Password,
@@ -63,7 +63,7 @@ func NewKafkaReader(cfg config.KafkaConfig, topic domain.Topic, groupId string) 
 	return reader
 }
 
-func PingKafka(ctx context.Context, cfg config.KafkaConfig) error {
+func PingKafka(ctx context.Context, cfg config.Kafka) error {
 	mechanism := plain.Mechanism{
 		Username: cfg.Username,
 		Password: cfg.Password,

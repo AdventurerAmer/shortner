@@ -16,17 +16,17 @@ import (
 )
 
 type App struct {
-	*config.ServiceConfig
+	*config.Service
 	cfg    *config.Config
 	logger *logging.Logger
 	health health.Checker
 }
 
-func New(serviceCfg *config.ServiceConfig, cfg *config.Config, logger *logging.Logger) *App {
+func New(serviceCfg *config.Service, cfg *config.Config, logger *logging.Logger) *App {
 	app := &App{
-		ServiceConfig: serviceCfg,
-		cfg:           cfg,
-		logger:        logger,
+		Service: serviceCfg,
+		cfg:     cfg,
+		logger:  logger,
 	}
 	return app
 }

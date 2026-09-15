@@ -10,8 +10,8 @@ import (
 	"github.com/ThreeDotsLabs/humanslog"
 )
 
+type Level = slog.Level
 type Logger = slog.Logger
-type loggerCtxKey struct{}
 
 func New(cfg *config.Config) *Logger {
 	level := parseLevel(cfg.Observability.Logging.Level)
@@ -47,6 +47,8 @@ func New(cfg *config.Config) *Logger {
 
 	return logger
 }
+
+type loggerCtxKey struct{}
 
 func Set(ctx context.Context, logger *Logger) context.Context {
 	return context.WithValue(ctx, loggerCtxKey{}, logger)

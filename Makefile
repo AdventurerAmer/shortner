@@ -1,5 +1,9 @@
-PHONY: shortening
-shortening:
+PHONY: build_shortening
+build_shortening:
+	@go build ./cmd/services/shortening -o ./bin/shortening
+
+PHONY: run_shortening
+run_shortening: 
 	@go run ./cmd/services/shortening
 
 PHONY: redirecting

@@ -1,6 +1,6 @@
 app:
   name: Shortner
-  domain: localhost
+  domain: shortner.com
   version: 0.1.1
 
 services:

@@ -40,8 +40,8 @@ func Run() int {
 		logger.Error("'infra.New()' failed", "error", err)
 		return 1
 	}
-	inf.BindRedis(cfg.Infrastructure.Redis, &redisCtx)
-	inf.BindCassandra(cfg.Infrastructure.Cassandra, &cassandraCtx)
+	inf.BindRedis(cfg.Infra.Redis, &redisCtx)
+	inf.BindCassandra(cfg.Infra.Cassandra, &cassandraCtx)
 
 	if err := inf.Start(context.Background()); err != nil {
 		logger.Error("infrastructure connection failed", "error", err)
@@ -53,7 +53,7 @@ func Run() int {
 
 	URLMappingRepo := urlmapping.NewCassandra(
 		cassandraCtx.Session,
-		cfg.Infrastructure.Cassandra.Keyspace,
+		cfg.Infra.Cassandra.Keyspace,
 		redisCache)
 
 	redirectingCfg := redirecting.Config{
@@ -64,7 +64,7 @@ func Run() int {
 	orch := goorch.New(context.Background())
 	defer orch.CancelAndWait()
 
-	writer := infra.NewKafkaWriter(cfg.Infrastructure.Kafka, domain.ClicksTopic)
+	writer := infra.NewKafkaWriter(cfg.Infra.Kafka, domain.ClicksTopic)
 	defer func() {
 		_ = writer.Close()
 	}()
@@ -92,7 +92,7 @@ func Run() int {
 
 		checks["redis"] = "up"
 
-		if err := infra.PingKafka(ctx, cfg.Infrastructure.Kafka); err != nil {
+		if err := infra.PingKafka(ctx, cfg.Infra.Kafka); err != nil {
 			checks["kafka"] = err.Error()
 			return fmt.Errorf("'infra.PingKafka' failed: %w", err)
 		}

@@ -30,7 +30,7 @@ func main() {
 		logger.Error("'infra.New()' failed", "error", err)
 		os.Exit(1)
 	}
-	inf.BindClickHouse(cfg.Infrastructure.ClickHouse, &clickHouseCtx)
+	inf.BindClickHouse(cfg.Infra.ClickHouse, &clickHouseCtx)
 
 	if err := inf.Start(context.Background()); err != nil {
 		logger.Error("infrastructure connection failed", "error", err)

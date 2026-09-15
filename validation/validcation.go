@@ -25,12 +25,12 @@ func Validate(s any) error {
 }
 
 func formatValidationErrors(err error) map[string]string {
-	errs := make(map[string]string)
+	fields := make(map[string]string)
 	for _, err := range err.(validator.ValidationErrors) {
 		field := err.Field()
-		errs[field] = getErrorMessage(err)
+		fields[field] = getErrorMessage(err)
 	}
-	return errs
+	return fields
 }
 
 func getErrorMessage(err validator.FieldError) string {

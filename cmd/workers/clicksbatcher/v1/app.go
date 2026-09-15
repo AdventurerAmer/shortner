@@ -28,7 +28,7 @@ func Run() int {
 	workerCfg := &cfg.Workers.Clicks
 	logger := logging.New(cfg).With(slog.String("worker", workerCfg.Name))
 
-	writer := infra.NewKafkaWriter(cfg.Infrastructure.Kafka, domain.ClicksBatchTopic)
+	writer := infra.NewKafkaWriter(cfg.Infra.Kafka, domain.ClicksBatchTopic)
 	defer func() {
 		if err := writer.Close(); err != nil {
 			logger.Error("'producer.Close' failed", "error", err)
@@ -51,7 +51,7 @@ func Run() int {
 	batchSize := 1024
 	collector := newCollector(bucketCount, bucketCapacity, batchSize, orch, eventProducer)
 
-	reader := infra.NewKafkaReader(cfg.Infrastructure.Kafka, domain.Topic(workerCfg.Topic), workerCfg.Group)
+	reader := infra.NewKafkaReader(cfg.Infra.Kafka, domain.Topic(workerCfg.Topic), workerCfg.Group)
 	defer func() {
 		if err := reader.Close(); err != nil {
 			logger.Error("'reader.Close' failed", "error", err)

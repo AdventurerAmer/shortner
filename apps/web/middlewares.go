@@ -100,7 +100,7 @@ func Recover(env config.Env) Middleware {
 
 					err := fmt.Errorf("%+v", rec)
 
-					if env == config.EnvProd {
+					if env == config.EnvProduction {
 						logger.Error("recovered from panic", "error", err)
 					} else {
 						stackTrace := string(debug.Stack())

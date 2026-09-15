@@ -9,7 +9,7 @@ import (
 )
 
 type redisConfigWrapper struct {
-	config.RedisConfig
+	config.Redis
 }
 
 func (cfg *redisConfigWrapper) Connect(ctx context.Context) (Disconnecter, error) {

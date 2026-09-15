@@ -39,7 +39,7 @@ func TestClickhouseAnalyticRepo(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	database := cfg.Infrastructure.ClickHouse.Database
+	database := cfg.Infra.ClickHouse.Database
 	repo := NewClickHouse(database, clickHouse.Conn, ports.NewCacheStub(), time.Second)
 
 	t.Run("GetSucceedsForValidInput", func(t *testing.T) {

@@ -118,17 +118,17 @@ func (infra *Infra) Shutdown(ctx context.Context) {
 	}
 }
 
-func (infra *Infra) BindCassandra(cfg config.CassandraConfig, c *Cassandra) {
-	wrapper := &cassandraConfigWrapper{CassandraConfig: cfg}
+func (infra *Infra) BindCassandra(cfg config.Cassandra, c *Cassandra) {
+	wrapper := &cassandraConfigWrapper{Cassandra: cfg}
 	infra.Bind(wrapper, c)
 }
 
-func (infra *Infra) BindClickHouse(cfg config.ClickHouseConfig, ch *ClickHouse) {
-	wrapper := &clickHouseConfigWrapper{ClickHouseConfig: cfg}
+func (infra *Infra) BindClickHouse(cfg config.ClickHouse, ch *ClickHouse) {
+	wrapper := &clickHouseConfigWrapper{ClickHouse: cfg}
 	infra.Bind(wrapper, ch)
 }
 
-func (infra *Infra) BindRedis(cfg config.RedisConfig, r *Redis) {
-	wrapper := &redisConfigWrapper{RedisConfig: cfg}
+func (infra *Infra) BindRedis(cfg config.Redis, r *Redis) {
+	wrapper := &redisConfigWrapper{Redis: cfg}
 	infra.Bind(wrapper, r)
 }

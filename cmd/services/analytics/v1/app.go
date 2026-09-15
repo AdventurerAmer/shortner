@@ -36,8 +36,8 @@ func Run() int {
 		logger.Error("'infra.New()' failed", "error", err)
 		return 1
 	}
-	inf.BindRedis(cfg.Infrastructure.RedisAnalytics, &redisCtx)
-	inf.BindClickHouse(cfg.Infrastructure.ClickHouse, &clickHouseCtx)
+	inf.BindRedis(cfg.Infra.RedisAnalytics, &redisCtx)
+	inf.BindClickHouse(cfg.Infra.ClickHouse, &clickHouseCtx)
 
 	if err := inf.Start(context.Background()); err != nil {
 		logger.Error("infrastructure connection failed", "error", err)
@@ -49,7 +49,7 @@ func Run() int {
 
 	ttl := cfg.Constants.AnalyticClicksCacheTTL
 	logger.Info("cfg.Constants.AnalyticClicksCacheTTL", "ttl", ttl)
-	analyticClicksRepo := analyticclicks.NewClickHouse(cfg.Infrastructure.ClickHouse.Database, clickHouseCtx.Conn, redisCache, ttl)
+	analyticClicksRepo := analyticclicks.NewClickHouse(cfg.Infra.ClickHouse.Database, clickHouseCtx.Conn, redisCache, ttl)
 
 	analyticsCfg := analytics.Config{
 		AnalyticClicksRepo: analyticClicksRepo,

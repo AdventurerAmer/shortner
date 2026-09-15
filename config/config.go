@@ -16,37 +16,19 @@ import (
 	"github.com/knadh/koanf/v2"
 )
 
-type Env string
-
-func (env Env) String() string {
-	return string(env)
-}
-
-const (
-	EnvLocal   Env = "local"
-	EnvStaging Env = "staging"
-	EnvProd    Env = "production"
-)
-
 type Config struct {
-	Env            Env                  `koanf:"env" validate:"required,oneof=local staging production"`
-	App            AppConfig            `koanf:"app"`
-	Infrastructure InfrastructureConfig `koanf:"infrastructure"`
-	Observability  ObservabilityConfig  `koanf:"observability"`
-	Services       ServicesConfig       `koanf:"services"`
-	Workers        WorkersConfig        `koanf:"workers"`
-	Constants      Constants            `koanf:"constants"`
-}
-
-type AppConfig struct {
-	Name    string `koanf:"name" validate:"required,min=1,max=128"`
-	Domain  string `koanf:"domain" validate:"required,min=1"`
-	Version string `koanf:"version" validate:"required,semver"`
+	Env           Env            `koanf:"env" validate:"required,oneof=local staging production"`
+	App           App            `koanf:"app"`
+	Infra         Infrastructure `koanf:"infrastructure"`
+	Observability Observability  `koanf:"observability"`
+	Services      Services       `koanf:"services"`
+	Workers       Workers        `koanf:"workers"`
+	Constants     Constants      `koanf:"constants"`
 }
 
 func Load() (*Config, error) {
 	var envFile string
-	flag.StringVar(&envFile, "envFile", ".env.local", "env file to load config from")
+	flag.StringVar(&envFile, "env-file", ".env.production", "env file to load config from")
 	flag.Parse()
 
 	delim := "."

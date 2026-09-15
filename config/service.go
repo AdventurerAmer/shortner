@@ -2,18 +2,20 @@ package config
 
 import (
 	"fmt"
+	"net"
 	"time"
 )
 
-type ServicesConfig struct {
-	Shortening  ServiceConfig `koanf:"shortening"`
-	Redirecting ServiceConfig `koanf:"redirecting"`
-	Analytics   ServiceConfig `koanf:"analytics"`
+type Services struct {
+	Shortening  Service `koanf:"shortening"`
+	Redirecting Service `koanf:"redirecting"`
+	Analytics   Service `koanf:"analytics"`
 }
 
-type ServiceConfig struct {
-	Name                    string        `koanf:"name" validate:"required,min=1,max=128"`
-	Port                    int           `koanf:"port" validate:"required,min=1,max=65535"`
+type Service struct {
+	Name                    string        `koanf:"name" validate:"required,max=128"`
+	Host                    string        `koanf:"host" validate:"required,hostname"`
+	Port                    int           `koanf:"port" validate:"required,min=1024,max=65535"`
 	Version                 string        `koanf:"version" validate:"required,semver"`
 	MaxHeaderBytes          int           `koanf:"maxHeaderBytes" validate:"required,min=1"`
 	ReadHeaderTimeout       time.Duration `koanf:"readHeaderTimeout" validate:"required,min=1s"`
@@ -21,23 +23,26 @@ type ServiceConfig struct {
 	WriteTimeout            time.Duration `koanf:"writeTimeout" validate:"required,min=1s"`
 	IdleTimeout             time.Duration `koanf:"idleTimeout" validate:"required,min=1s"`
 	DefaultTimeout          time.Duration `koanf:"defaultTimeout" validate:"required,min=1s"`
-	HealthCheckTimeout      time.Duration `koanf:"defaultTimeout" validate:"required,min=1ms"`
+	HealthCheckTimeout      time.Duration `koanf:"healthCheckTimeout" validate:"required,min=1ms"`
 	GracefulShutdownTimeout time.Duration `koanf:"gracefulShutdownTimeout" validate:"required,min=1s"`
 	allowedOrigins          []string      `koanf:"allowedOrigins" validate:"required"`
 }
 
-func (srv *ServiceConfig) Address() string {
-	// TODO: using http here
-	return fmt.Sprintf("http://localhost:%d", srv.Port)
+func (srv *Service) Addr() string {
+	return net.JoinHostPort(srv.Host, fmt.Sprintf("%d", srv.Port))
 }
 
-func setServiceDefaults(cfg *ServiceConfig) {
+func setServiceDefaults(cfg *Service) {
 	if cfg.Name == "" {
 		cfg.Name = "service"
 	}
 
 	if cfg.Port == 0 {
 		cfg.Port = 3030
+	}
+
+	if cfg.Host == "" {
+		cfg.Host = "localhost"
 	}
 
 	if cfg.Version == "" {

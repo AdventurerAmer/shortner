@@ -36,7 +36,7 @@ func TestCassandraURLMappingRepo(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	keyspace := cfg.Infrastructure.Cassandra.Keyspace
+	keyspace := cfg.Infra.Cassandra.Keyspace
 	repo := NewCassandra(cassandra.Session, keyspace, ports.NewCacheStub())
 
 	exampleURL := "www.example.com/examples"

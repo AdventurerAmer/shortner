@@ -34,7 +34,7 @@ func Run() int {
 		logger.Error("'infra.New()' failed", "error", err)
 		return 1
 	}
-	inf.BindCassandra(cfg.Infrastructure.Cassandra, &cassandraCtx)
+	inf.BindCassandra(cfg.Infra.Cassandra, &cassandraCtx)
 
 	if err := inf.Start(context.Background()); err != nil {
 		logger.Error("infrastructure connection failed", "error", err)
@@ -42,7 +42,7 @@ func Run() int {
 	}
 	defer inf.Shutdown(context.Background())
 
-	urlmappingRepo := urlmapping.NewCassandra(cassandraCtx.Session, cfg.Infrastructure.Cassandra.Keyspace, ports.NewCacheStub())
+	urlmappingRepo := urlmapping.NewCassandra(cassandraCtx.Session, cfg.Infra.Cassandra.Keyspace, ports.NewCacheStub())
 
 	idGenerator := snowflake.New("sa")
 	proto := "https"

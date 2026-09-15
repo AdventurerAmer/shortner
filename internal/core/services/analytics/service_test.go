@@ -41,7 +41,7 @@ func TestAnalyticsService_ClickHouseRepo(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	database := cfg.Infrastructure.ClickHouse.Database
+	database := cfg.Infra.ClickHouse.Database
 	repo := analyticclicks.NewClickHouse(database, clickHouse.Conn, ports.NewCacheStub(), time.Second)
 
 	srvCfg := Config{
