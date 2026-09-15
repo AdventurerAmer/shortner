@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"os"
 
 	"github.com/AdventurerAmer/shortner/apps/web"
 	"github.com/AdventurerAmer/shortner/config"
@@ -19,12 +18,13 @@ import (
 func Run() int {
 	cfg, err := config.Load()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to load config: %+v\n", err)
+		logger := logging.New()
+		logger.Error("failed to load config", "error", err)
 		return 1
 	}
 
 	serviceCfg := &cfg.Services.Analytics
-	logger := logging.New(cfg).With(slog.String("service", serviceCfg.Name))
+	logger := cfg.NewLogger().With(slog.String("service", serviceCfg.Name))
 
 	var (
 		redisCtx      infra.Redis

@@ -1,0 +1,34 @@
+# Git
+.git/
+.gitignore
+
+# Go build cache
+.cache/
+.gocache/
+
+# Environment files - not needed in production builds
+.env.production
+
+# Documentation
+docs/
+*.md
+README.md
+
+# Test and development files
+test/
+modules/
+scripts/
+bin/
+Makefile
+docker-compose.yml
+docker-compose.yaml
+
+# IDE and local config
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS artifacts
+.DS_Store
+Thumbs.db

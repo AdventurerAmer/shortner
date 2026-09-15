@@ -1,34 +1,58 @@
 PHONY: build_shortening
 build_shortening:
-	@go build ./cmd/services/shortening -o ./bin/shortening
+	@go build -o ./bin/services/shortening ./cmd/services/shortening
 
-PHONY: run_shortening
-run_shortening: 
-	@go run ./cmd/services/shortening
+PHONY: shortening
+shortening: build_shortening
+	@./bin/services/shortening -env-file=.env.local
+
+PHONY: build_redirecting
+build_redirecting:
+	@go build -o ./bin/services/redirecting ./cmd/services/redirecting
 
 PHONY: redirecting
 redirecting:
-	@go run ./cmd/services/redirecting
+	@./bin/services/redirecting -env-file=.env.local
+
+PHONY: build_analytics
+build_analytics:
+	@go build -o ./bin/services/analytics ./cmd/services/analytics
 
 PHONY: analytics
 analytics:
-	@go run ./cmd/services/analytics
+	@./bin/services/analytics -env-file=.env.local
+
+PHONY: build_clicks
+build_clicks:
+	@go build -o ./bin/workers/clicks ./cmd/workers/clicks
 
 PHONY: clicks
 clicks:
-	@go run ./cmd/workers/clicks
+	@./bin/workers/clicks -env-file=.env.local
+
+PHONY: build_clicksbatcher
+build_clicksbatcher:
+	@go build -o ./bin/workers/clicksbatcher ./cmd/workers/clicksbatcher
 
 PHONY: clicksbatcher
 clicksbatcher:
-	@go run ./cmd/workers/clicksbatcher
+	@./bin/workers/clicksbatcher -env-file=.env.local
+
+PHONY: build_cassandra
+build_cassandra:
+	@go build -o ./bin/migrators/cassandra ./cmd/migrators/cassandra
 
 PHONY: cassandra
 cassandra:
-	@go run ./cmd/migrators/cassandra
+	@./bin/migrators/cassandra -env-file=.env.local
+
+PHONY: build_clickhouse
+build_clickhouse:
+	@go build -o ./bin/migrators/clickhouse ./cmd/migrators/clickhouse
 
 PHONY: clickhouse
 clickhouse:
-	@go run ./cmd/migrators/clickhouse
+	@./cmd/migrators/clickhouse -env-file=.env.local
 
 PHONY: up
 up:

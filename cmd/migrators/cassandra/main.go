@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -17,11 +16,12 @@ import (
 func main() {
 	cfg, err := config.Load()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to load config: %+v\n", err)
+		logger := logging.New()
+		logger.Error("failed to load config", "error", err)
 		os.Exit(1)
 	}
 
-	logger := logging.New(cfg).With(slog.String("migrator", "cassandra"))
+	logger := cfg.NewLogger().With(slog.String("migrator", "cassandra"))
 
 	var cassandraCtx infra.Cassandra
 

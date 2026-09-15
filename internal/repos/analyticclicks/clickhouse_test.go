@@ -31,7 +31,12 @@ func TestClickhouseAnalyticRepo(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	logger := logging.New(cfg)
+	logger := logging.New(
+		logging.WithLocalEnv(cfg.Env == config.EnvLocal),
+		logging.WithFormat(cfg.Observability.Logging.Format),
+		logging.WithLevel(cfg.Observability.Logging.Level),
+		logging.WithAddSource(*cfg.Observability.Logging.AddSource),
+	)
 	ctx := logging.Set(context.Background(), logger)
 
 	clickHouse := test.ClickHouse(ctx, t)

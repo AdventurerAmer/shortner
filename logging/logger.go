@@ -6,29 +6,45 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/AdventurerAmer/shortner/config"
 	"github.com/ThreeDotsLabs/humanslog"
 )
 
-type Level = slog.Level
 type Logger = slog.Logger
 
-func New(cfg *config.Config) *Logger {
-	level := parseLevel(cfg.Observability.Logging.Level)
+func New(opts ...Option) *Logger {
+	cfg := Config{
+		LocalEnv:  false,
+		AddSource: false,
+		Level:     LevelDebug,
+		Format:    "json",
+	}
+	for _, opt := range opts {
+		opt(&cfg)
+	}
+
+	level := slog.LevelDebug
+	switch cfg.Level {
+	case LevelInfo:
+		level = slog.LevelInfo
+	case LevelWarn:
+		level = slog.LevelWarn
+	case LevelError:
+		level = slog.LevelError
+	}
 
 	replaceAttr := replaceAttrNonLocal
-	if cfg.Env == config.EnvLocal {
+	if cfg.LocalEnv {
 		replaceAttr = replaceAttrLocal
 	}
 
 	handlerOpts := &slog.HandlerOptions{
 		Level:       level,
-		AddSource:   *cfg.Observability.Logging.AddSource,
+		AddSource:   cfg.AddSource,
 		ReplaceAttr: replaceAttr,
 	}
 
 	var handler slog.Handler
-	if cfg.Observability.Logging.Format == "text" {
+	if cfg.Format == FormatText {
 		opts := &humanslog.Options{
 			HandlerOptions:    handlerOpts,
 			SortKeys:          true,
@@ -59,19 +75,6 @@ func Get(ctx context.Context) *Logger {
 		return logger
 	}
 	return slog.Default()
-}
-
-func parseLevel(level string) slog.Level {
-	switch level {
-	case "info":
-		return slog.LevelInfo
-	case "warn":
-		return slog.LevelWarn
-	case "error":
-		return slog.LevelError
-	default:
-		return slog.LevelDebug
-	}
 }
 
 func replaceAttrLocal(groups []string, attr slog.Attr) slog.Attr {

@@ -24,6 +24,7 @@ func setWorkerDefaults(cfg *Worker) {
 	if cfg.Name == "" {
 		cfg.Name = "worker"
 	}
+
 	if cfg.Version == "" {
 		cfg.Version = "0.0.1"
 	}

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"os"
 
 	"github.com/AdventurerAmer/shortner/apps/worker"
 	"github.com/AdventurerAmer/shortner/async/goorch"
@@ -21,12 +20,13 @@ import (
 func Run() int {
 	cfg, err := config.Load()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to load config: %+v\n", err)
+		logger := logging.New()
+		logger.Error("failed to load config", "error", err)
 		return 1
 	}
 
 	workerCfg := &cfg.Workers.Clicks
-	logger := logging.New(cfg).With(slog.String("worker", workerCfg.Name))
+	logger := cfg.NewLogger().With(slog.String("worker", workerCfg.Name))
 
 	writer := infra.NewKafkaWriter(cfg.Infra.Kafka, domain.ClicksBatchTopic)
 	defer func() {

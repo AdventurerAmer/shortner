@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"os"
 	"time"
 
 	"github.com/AdventurerAmer/shortner/apps/worker"
@@ -22,12 +21,13 @@ import (
 func Run() int {
 	cfg, err := config.Load()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to load config: %+v\n", err)
+		logger := logging.New()
+		logger.Error("failed to load config", "error", err)
 		return 1
 	}
 
 	workerCfg := &cfg.Workers.ClicksBatcher
-	logger := logging.New(cfg).With(slog.String("worker", workerCfg.Name))
+	logger := cfg.NewLogger().With(slog.String("worker", workerCfg.Name))
 
 	var clickHouseCtx infra.ClickHouse
 

@@ -8,7 +8,8 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/go-playground/validator/v10"
+	"github.com/AdventurerAmer/shortner/logging"
+	"github.com/AdventurerAmer/shortner/validation"
 	"github.com/joho/godotenv"
 	"github.com/knadh/koanf/parsers/yaml"
 	"github.com/knadh/koanf/providers/env/v2"
@@ -26,6 +27,16 @@ type Config struct {
 	Constants     Constants      `koanf:"constants"`
 }
 
+func (cfg *Config) NewLogger() *logging.Logger {
+	logger := logging.New(
+		logging.WithLocalEnv(cfg.Env == EnvLocal),
+		logging.WithFormat(cfg.Observability.Logging.Format),
+		logging.WithLevel(cfg.Observability.Logging.Level),
+		logging.WithAddSource(*cfg.Observability.Logging.AddSource),
+	)
+	return logger
+}
+
 func Load() (*Config, error) {
 	var envFile string
 	flag.StringVar(&envFile, "env-file", ".env.production", "env file to load config from")
@@ -34,12 +45,12 @@ func Load() (*Config, error) {
 	delim := "."
 	k := koanf.New(delim)
 
-	if err := k.Load(file.Provider("config.yaml"), yaml.Parser()); err != nil {
-		return nil, fmt.Errorf("failed to load config.yaml: %w", err)
-	}
-
 	if err := godotenv.Load(envFile); err != nil {
 		return nil, fmt.Errorf("failed to load env vars: %w", err)
+	}
+
+	if err := k.Load(file.Provider("config.yaml"), yaml.Parser()); err != nil {
+		return nil, fmt.Errorf("failed to load config.yaml: %w", err)
 	}
 
 	envPrefix := "SHORTNER."
@@ -80,7 +91,7 @@ func Load() (*Config, error) {
 
 	setDefaults(&cfg)
 
-	if err := validator.New(validator.WithRequiredStructEnabled()).Struct(cfg); err != nil {
+	if err := validation.Validate(cfg); err != nil {
 		return nil, fmt.Errorf("failed to validate config: %w", err)
 	}
 
