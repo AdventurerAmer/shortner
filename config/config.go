@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"strings"
@@ -8,6 +9,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/AdventurerAmer/shortner/errs"
 	"github.com/AdventurerAmer/shortner/logging"
 	"github.com/AdventurerAmer/shortner/validation"
 	"github.com/joho/godotenv"
@@ -92,6 +94,11 @@ func Load() (*Config, error) {
 	setDefaults(&cfg)
 
 	if err := validation.Validate(cfg); err != nil {
+		if errs.IsValidation(err) {
+			var e *errs.Error
+			errors.As(err, &e)
+			return nil, fmt.Errorf("failed to validate config: %w", fmt.Errorf("one or more invalid fields: %+v", e.Fields))
+		}
 		return nil, fmt.Errorf("failed to validate config: %w", err)
 	}
 

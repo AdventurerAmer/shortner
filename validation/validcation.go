@@ -24,10 +24,12 @@ func Validate(s any) error {
 	return nil
 }
 
-func formatValidationErrors(err error) map[string]string {
-	fields := make(map[string]string)
+func formatValidationErrors(err error) errs.Fields {
+	fields := make(errs.Fields)
 	for _, err := range err.(validator.ValidationErrors) {
-		field := err.Field()
+		key := err.Namespace()
+		parts := strings.Split(key, ".")
+		field := strings.Join(parts[1:], ".")
 		fields[field] = getErrorMessage(err)
 	}
 	return fields
