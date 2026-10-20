@@ -22,7 +22,7 @@ func (h *handlers) get(c *web.Context) (any, error) {
 	dctx, span := telemetry.NewSpan(c.Ctx(), "handler: get")
 	defer span.End()
 
-	req := ports.GetAnalyticStatRequest{
+	req := ports.GetAnalyticRequest{
 		Alias: c.Request.PathValue("alias"),
 	}
 

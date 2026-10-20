@@ -152,7 +152,6 @@ func setDefaults(cfg *Config) {
 	setServiceDefaults(&cfg.Services.Analytics)
 
 	setWorkerDefaults(&cfg.Workers.Clicks)
-	setWorkerDefaults(&cfg.Workers.ClicksBatcher)
 }
 
 func snakeCaseToCamelCase(s string) string {

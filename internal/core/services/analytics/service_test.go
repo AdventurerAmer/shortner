@@ -10,7 +10,7 @@ import (
 	"github.com/AdventurerAmer/shortner/errs"
 	"github.com/AdventurerAmer/shortner/internal/core/domain"
 	"github.com/AdventurerAmer/shortner/internal/core/ports"
-	"github.com/AdventurerAmer/shortner/internal/repos/analyticclicks"
+	"github.com/AdventurerAmer/shortner/internal/repos/analyticsrepo"
 	"github.com/AdventurerAmer/shortner/snowflake"
 	"github.com/AdventurerAmer/shortner/test"
 	"github.com/google/go-cmp/cmp"
@@ -42,7 +42,7 @@ func TestAnalyticsService_ClickHouseRepo(t *testing.T) {
 	}
 
 	database := cfg.Infra.ClickHouse.Database
-	repo := analyticclicks.NewClickHouse(database, clickHouse.Conn, ports.NewCacheStub(), time.Second)
+	repo := analyticsrepo.NewClickHouse(database, clickHouse.Conn, ports.NewCacheStub(), time.Second)
 
 	srvCfg := Config{
 		AnalyticClicksRepo: repo,
@@ -56,20 +56,19 @@ func TestAnalyticsService_ClickHouseRepo(t *testing.T) {
 		defer cancel()
 
 		shard := "sa"
-		idGenerator := snowflake.New(shard)
-		stat := &domain.AnalyticClicks{
-			Alias:  idGenerator.Next(),
-			Clicks: 10,
+		idGen := snowflake.New(shard)
+
+		analytic := &domain.Analytic{
+			Alias:  idGen.Next(),
+			Clicks: 1,
 		}
-		patchId := []string{uuid.NewString()}
-		aliases := []string{stat.Alias}
-		clicks := []int{int(stat.Clicks)}
-		if err := repo.Put(ctx, patchId, aliases, clicks); err != nil {
-			t.Skipf("failed to create analytic stat: %+v", err)
+		alias := analytic.Alias
+		if err := repo.Put(ctx, uuid.NewString(), alias, time.Now()); err != nil {
+			t.Skipf("failed to create analytic: %+v", err)
 		}
 
-		req := ports.GetAnalyticStatRequest{
-			Alias: stat.Alias,
+		req := ports.GetAnalyticRequest{
+			Alias: analytic.Alias,
 		}
 		resp, err := service.Get(ctx, req)
 		if err != nil {
@@ -79,8 +78,8 @@ func TestAnalyticsService_ClickHouseRepo(t *testing.T) {
 			t.Skipf("get analytic failed: %+v", err)
 		}
 
-		expected := stat
-		got := resp.AnalyticStat
+		expected := analytic
+		got := resp.Analytic
 		if !cmp.Equal(expected, got, cmpopts.EquateApproxTime(time.Second)) {
 			t.Errorf("expected %+v, got %+v, diff %+v", expected, got, cmp.Diff(expected, got))
 		}

@@ -52,8 +52,8 @@ func (app *App) Run(handler ports.ConsumerHandlerFunc) error {
 	msgCh := app.consumer.Receive(sigCtx)
 	done := make(chan struct{})
 
-	logger.Info("consumer started", "group", app.Group)
-	defer logger.Info("consumer ended", "group", app.Group)
+	logger.Info("consumer started")
+	defer logger.Info("consumer ended")
 
 	go func() {
 		for msg := range msgCh {

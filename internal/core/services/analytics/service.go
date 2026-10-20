@@ -10,7 +10,7 @@ import (
 )
 
 type Config struct {
-	AnalyticClicksRepo ports.AnalyticClicksRepository
+	AnalyticClicksRepo ports.AnalyticsRepository
 }
 
 type service struct {
@@ -23,21 +23,21 @@ func New(cfg Config) ports.AnalyticService {
 	}
 }
 
-func (srv *service) Get(ctx context.Context, req ports.GetAnalyticStatRequest) (ports.GetAnalyticStatResponse, error) {
+func (srv *service) Get(ctx context.Context, req ports.GetAnalyticRequest) (ports.GetAnalyticResponse, error) {
 	dctx, span := telemetry.NewSpan(ctx, "Analytics Service: Get")
 	defer span.End()
 
 	if err := validation.Validate(&req); err != nil {
 		span.RecordError(err)
-		return ports.GetAnalyticStatResponse{}, fmt.Errorf("validation failed: %w", err)
+		return ports.GetAnalyticResponse{}, fmt.Errorf("validation failed: %w", err)
 	}
 	stat, err := srv.AnalyticClicksRepo.Get(dctx, req.Alias)
 	if err != nil {
 		span.RecordError(err)
-		return ports.GetAnalyticStatResponse{}, fmt.Errorf("'AnalyticStatRepo.Get' failed: %w", err)
+		return ports.GetAnalyticResponse{}, fmt.Errorf("'AnalyticStatRepo.Get' failed: %w", err)
 	}
-	resp := ports.GetAnalyticStatResponse{
-		AnalyticStat: stat,
+	resp := ports.GetAnalyticResponse{
+		Analytic: stat,
 	}
 	return resp, nil
 }

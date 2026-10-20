@@ -11,7 +11,7 @@ import (
 	"github.com/AdventurerAmer/shortner/infra"
 	"github.com/AdventurerAmer/shortner/internal/caches"
 	"github.com/AdventurerAmer/shortner/internal/core/services/analytics"
-	"github.com/AdventurerAmer/shortner/internal/repos/analyticclicks"
+	"github.com/AdventurerAmer/shortner/internal/repos/analyticsrepo"
 	"github.com/AdventurerAmer/shortner/logging"
 )
 
@@ -49,7 +49,7 @@ func Run() int {
 
 	ttl := cfg.Constants.AnalyticClicksCacheTTL
 	logger.Info("cfg.Constants.AnalyticClicksCacheTTL", "ttl", ttl)
-	analyticClicksRepo := analyticclicks.NewClickHouse(cfg.Infra.ClickHouse.Database, clickHouseCtx.Conn, redisCache, ttl)
+	analyticClicksRepo := analyticsrepo.NewClickHouse(cfg.Infra.ClickHouse.Database, clickHouseCtx.Conn, redisCache, ttl)
 
 	analyticsCfg := analytics.Config{
 		AnalyticClicksRepo: analyticClicksRepo,

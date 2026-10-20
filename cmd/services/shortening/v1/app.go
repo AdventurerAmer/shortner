@@ -11,7 +11,7 @@ import (
 	"github.com/AdventurerAmer/shortner/infra"
 	"github.com/AdventurerAmer/shortner/internal/core/ports"
 	"github.com/AdventurerAmer/shortner/internal/core/services/shortening"
-	"github.com/AdventurerAmer/shortner/internal/repos/urlmapping"
+	"github.com/AdventurerAmer/shortner/internal/repos/urlmappingsrepo"
 	"github.com/AdventurerAmer/shortner/logging"
 	"github.com/AdventurerAmer/shortner/snowflake"
 )
@@ -42,7 +42,7 @@ func Run() int {
 	}
 	defer inf.Shutdown(context.Background())
 
-	urlmappingRepo := urlmapping.NewCassandra(cassandraCtx.Session, cfg.Infra.Cassandra.Keyspace, ports.NewCacheStub())
+	urlmappingsRepo := urlmappingsrepo.NewCassandra(cassandraCtx.Session, cfg.Infra.Cassandra.Keyspace, ports.NewCacheStub())
 
 	idGenerator := snowflake.New("sa")
 	proto := "https"
@@ -52,7 +52,7 @@ func Run() int {
 	shortURLPrefix := fmt.Sprintf("%s://%s/", proto, cfg.App.Domain)
 	shorteningCfg := shortening.Config{
 		ShortURLPrefix: shortURLPrefix,
-		URLMappingRepo: urlmappingRepo,
+		URLMappingRepo: urlmappingsRepo,
 		IdGenerator:    idGenerator,
 	}
 	service := shortening.New(shorteningCfg)

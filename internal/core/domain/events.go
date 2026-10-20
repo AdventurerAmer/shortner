@@ -7,17 +7,11 @@ import (
 type Topic string
 
 const (
-	ClicksTopic      Topic = "clicks"
-	ClicksBatchTopic Topic = "clicksBatch"
+	ClicksTopic Topic = "clicks"
 )
 
 type ClickEvent struct {
+	Id        string    `json:"id"`
 	Alias     string    `json:"alias"`
 	Timestamp time.Time `json:"timestamp"`
-}
-
-type ClicksBatchEvent struct {
-	UUIds   []string `json:"uuid"`
-	Aliases []string `json:"aliases"`
-	Clicks  []int    `json:"clicks"`
 }

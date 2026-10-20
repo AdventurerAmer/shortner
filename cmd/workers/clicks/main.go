@@ -3,9 +3,9 @@ package main
 import (
 	"os"
 
-	ClicksV1 "github.com/AdventurerAmer/shortner/cmd/workers/clicks/v1"
+	clicksv1 "github.com/AdventurerAmer/shortner/cmd/workers/clicks/v1"
 )
 
 func main() {
-	os.Exit(ClicksV1.Run())
+	os.Exit(clicksv1.Run())
 }

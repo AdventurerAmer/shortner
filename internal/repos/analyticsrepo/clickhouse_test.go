@@ -1,4 +1,4 @@
-package analyticclicks
+package analyticsrepo
 
 import (
 	"context"
@@ -55,14 +55,15 @@ func TestClickhouseAnalyticRepo(t *testing.T) {
 
 		idGen := snowflake.New(uuid.NewString())
 
-		expected := &domain.AnalyticClicks{
+		expected := &domain.Analytic{
 			Alias:  idGen.Next(),
 			Clicks: 1,
 		}
-		patchId := []string{uuid.NewString()}
-		aliases := []string{expected.Alias}
-		clicks := []int{int(expected.Clicks)}
-		if err := repo.Put(ctx, patchId, aliases, clicks); err != nil {
+
+		eventId := uuid.NewString()
+		alias := expected.Alias
+		createdAt := time.Now().UTC()
+		if err := repo.Put(ctx, eventId, alias, createdAt); err != nil {
 			t.Skipf("'repo.Put' failed: %+v", err)
 		}
 
@@ -86,22 +87,16 @@ func TestClickhouseAnalyticRepo(t *testing.T) {
 
 		idGen := snowflake.New(uuid.NewString())
 
-		expected := &domain.AnalyticClicks{
+		expected := &domain.Analytic{
 			Alias:  idGen.Next(),
 			Clicks: 1,
 		}
-		ids := []string{uuid.NewString()}
-		aliases := []string{expected.Alias}
-		clicks := []int{int(expected.Clicks)}
-		if err := repo.Put(ctx, ids, aliases, clicks); err != nil {
+		alias := expected.Alias
+		if err := repo.Put(ctx, uuid.NewString(), alias, time.Now().UTC()); err != nil {
 			t.Skipf("'repo.Put' failed: %+v", err)
 		}
 
-		if err := repo.Put(ctx, ids, aliases, clicks); err != nil {
-			t.Skipf("'repo.Put' failed: %+v", err)
-		}
-
-		if err := repo.Put(ctx, ids, aliases, clicks); err != nil {
+		if err := repo.Put(ctx, uuid.NewString(), alias, time.Now().UTC()); err != nil {
 			t.Skipf("'repo.Put' failed: %+v", err)
 		}
 
@@ -124,18 +119,13 @@ func TestClickhouseAnalyticRepo(t *testing.T) {
 		defer cancel()
 
 		idGen := snowflake.New(uuid.NewString())
-		expected := &domain.AnalyticClicks{
-			Alias:  idGen.Next(),
-			Clicks: 1,
-		}
-		ids := []string{uuid.NewString()}
-		aliases := []string{expected.Alias}
-		clicks := []int{int(expected.Clicks)}
-		if err := repo.Put(ctx, ids, aliases, clicks); err != nil {
+		alias := idGen.Next()
+		eventId := uuid.NewString()
+		if err := repo.Put(ctx, eventId, alias, time.Now().UTC()); err != nil {
 			t.Skipf("'repo.Put' failed: %+v", err)
 		}
 
-		if err := repo.Delete(ctx, expected.Alias); err != nil {
+		if err := repo.Delete(ctx, eventId); err != nil {
 			t.Fatalf("expected no error, got %+v", err)
 		}
 	})

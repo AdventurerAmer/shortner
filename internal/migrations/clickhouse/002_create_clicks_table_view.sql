@@ -1,17 +1,13 @@
-CREATE TABLE IF NOT EXISTS default.analytic_clicks_view_target (
-    unique_id String,
+CREATE TABLE IF NOT EXISTS default.analytics_view_target (
 	alias String,
-	total_clicks UInt64,
-	record_count UInt64 
+	clicks UInt64
 ) ENGINE = AggregatingMergeTree()
-ORDER BY (unique_id, alias);
+ORDER BY (alias);
 
-CREATE MATERIALIZED VIEW IF NOT EXISTS default.analytic_clicks_view 
-TO analytic_clicks_view_target AS 
-SELECT 
-    uniqState(id) as unique_id, 
+CREATE MATERIALIZED VIEW IF NOT EXISTS default.analytics_view 
+TO analytics_view_target AS 
+SELECT  
 	alias,
-	sum(clicks) AS total_clicks,
-	count() AS record_count
-FROM default.analytic_clicks
-GROUP BY (id, alias);
+	count() AS clicks
+FROM default.analytics
+GROUP BY (alias);

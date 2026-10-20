@@ -2,24 +2,25 @@ package ports
 
 import (
 	"context"
+	"time"
 
 	"github.com/AdventurerAmer/shortner/internal/core/domain"
 )
 
-type AnalyticClicksRepository interface {
-	Get(ctx context.Context, alias string) (*domain.AnalyticClicks, error)
-	Put(ctx context.Context, ids []string, aliases []string, clicks []int) error
-	Delete(ctx context.Context, alias string) error
+type AnalyticsRepository interface {
+	Put(ctx context.Context, eventId, alias string, createdAt time.Time) error
+	Get(ctx context.Context, alias string) (*domain.Analytic, error)
+	Delete(ctx context.Context, eventId string) error
 }
 
 type AnalyticService interface {
-	Get(ctx context.Context, req GetAnalyticStatRequest) (GetAnalyticStatResponse, error)
+	Get(ctx context.Context, req GetAnalyticRequest) (GetAnalyticResponse, error)
 }
 
-type GetAnalyticStatRequest struct {
+type GetAnalyticRequest struct {
 	Alias string `json:"alias" validate:"required,len=9"`
 }
 
-type GetAnalyticStatResponse struct {
-	AnalyticStat *domain.AnalyticClicks `json:"analyticStat"`
+type GetAnalyticResponse struct {
+	Analytic *domain.Analytic `json:"analyticStat"`
 }

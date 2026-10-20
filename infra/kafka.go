@@ -49,14 +49,11 @@ func NewKafkaReader(cfg config.Kafka, topic domain.Topic, groupId string) *kafka
 		SASLMechanism: mechanism,
 	}
 
-	addr := fmt.Sprintf("%s:%d", cfg.Host, cfg.Port)
 	readerCfg := kafka.ReaderConfig{
-		Brokers:     []string{addr},
+		Brokers:     []string{cfg.Addr()},
 		Topic:       string(topic),
 		GroupID:     groupId,
 		StartOffset: kafka.LastOffset,
-		MinBytes:    10 * 1024,        // 10KB
-		MaxBytes:    10 * 1024 * 1024, // 10MB
 		Dialer:      dialer,
 	}
 	reader := kafka.NewReader(readerCfg)

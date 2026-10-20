@@ -5,14 +5,12 @@ import (
 )
 
 type Workers struct {
-	Clicks        Worker `koanf:"clicks"`
-	ClicksBatcher Worker `koanf:"clicksBatcher"`
+	Clicks Worker `koanf:"clicks"`
 }
 
 type Worker struct {
 	Name                    string        `koanf:"name" validate:"required,max=128"`
 	Version                 string        `koanf:"version" validate:"required,semver"`
-	Group                   string        `koanf:"group" validate:"required,max=128"`
 	Topic                   string        `koanf:"topic" validate:"required,oneof=clicks clicksBatch"`
 	DefaultTimeout          time.Duration `koanf:"defaultTimeout" validate:"required,min=1s"`
 	GracefulShutdownTimeout time.Duration `koanf:"gracefulShutdownTimeout" validate:"required,min=1s"`

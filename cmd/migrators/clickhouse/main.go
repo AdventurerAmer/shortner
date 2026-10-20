@@ -7,7 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	clickhouseMigratorV1 "github.com/AdventurerAmer/shortner/cmd/migrators/clickhouse/v1"
+	clickhouseMigratorv1 "github.com/AdventurerAmer/shortner/cmd/migrators/clickhouse/v1"
 	"github.com/AdventurerAmer/shortner/config"
 	"github.com/AdventurerAmer/shortner/infra"
 	"github.com/AdventurerAmer/shortner/logging"
@@ -42,8 +42,8 @@ func main() {
 	defer cancel()
 
 	dctx := logging.Set(sigCtx, logger)
-	if err := clickhouseMigratorV1.Run(dctx, &clickHouseCtx); err != nil {
-		logger.Error("'clickhouseMigratorV1.Run' failed", "error", err)
+	if err := clickhouseMigratorv1.Run(dctx, &clickHouseCtx); err != nil {
+		logger.Error("'clickhouseMigratorv1.Run' failed", "error", err)
 		os.Exit(1)
 	}
 }

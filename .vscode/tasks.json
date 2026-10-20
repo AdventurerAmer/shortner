@@ -1,12 +1,12 @@
 {
     "version": "2.0.0",
     "tasks": [
-       {
+        {
             "label": "Run Cassandra Migrations",
             "type": "shell",
             "command": "make cassandra",
             "group": "none",
-			 "presentation": {
+            "presentation": {
                 "reveal": "always",
                 "panel": "new"
             }
@@ -16,7 +16,7 @@
             "type": "shell",
             "command": "make clickhouse",
             "group": "none",
-			 "presentation": {
+            "presentation": {
                 "reveal": "always",
                 "panel": "new"
             }
@@ -29,12 +29,12 @@
                 "Run Cassandra Migrations"
             ],
             "group": "none",
-			 "presentation": {
+            "presentation": {
                 "reveal": "always",
                 "panel": "new"
             }
         },
-		{
+        {
             "label": "Run Redirecting",
             "type": "shell",
             "command": "make redirecting",
@@ -42,12 +42,12 @@
                 "Run Cassandra Migrations"
             ],
             "group": "none",
-			 "presentation": {
+            "presentation": {
                 "reveal": "always",
                 "panel": "new"
             }
         },
-		{
+        {
             "label": "Run Analytics",
             "type": "shell",
             "command": "make analytics",
@@ -55,12 +55,12 @@
                 "Run ClickHouse Migrations"
             ],
             "group": "none",
-			 "presentation": {
+            "presentation": {
                 "reveal": "always",
                 "panel": "new"
             }
         },
-		{
+        {
             "label": "Run Clicks",
             "type": "shell",
             "command": "make clicks",
@@ -68,20 +68,7 @@
                 "Run ClickHouse Migrations"
             ],
             "group": "none",
-			 "presentation": {
-                "reveal": "always",
-                "panel": "new"
-            }
-        },
-		{
-            "label": "Run Clicks Batcher",
-            "type": "shell",
-            "command": "make clicksbatcher",
-            "dependsOn": [
-                "Run ClickHouse Migrations"
-            ],
-            "group": "none",
-			 "presentation": {
+            "presentation": {
                 "reveal": "always",
                 "panel": "new"
             }
@@ -100,10 +87,9 @@
                 "Run Cassandra Migrations",
                 "Run ClickHouse Migrations",
                 "Run Shortening",
-				"Run Redirecting",
-				"Run Analytics",
-				"Run Clicks",
-				"Run Clicks Batcher"
+                "Run Redirecting",
+                "Run Analytics",
+                "Run Clicks",
             ],
             "group": {
                 "kind": "build",

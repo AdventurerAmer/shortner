@@ -9,6 +9,7 @@ import (
 	"github.com/AdventurerAmer/shortner/internal/core/domain"
 	"github.com/AdventurerAmer/shortner/internal/core/ports"
 	"github.com/AdventurerAmer/shortner/telemetry"
+	"github.com/google/uuid"
 )
 
 type handlers struct {
@@ -37,6 +38,7 @@ func (h *handlers) redirect(c *web.Context) (any, error) {
 	}
 
 	event := domain.ClickEvent{
+		Id:        uuid.NewString(),
 		Alias:     req.Alias,
 		Timestamp: time.Now().UTC(),
 	}

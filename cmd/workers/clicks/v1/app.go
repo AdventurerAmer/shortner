@@ -13,7 +13,7 @@ import (
 	"github.com/AdventurerAmer/shortner/internal/brokers"
 	"github.com/AdventurerAmer/shortner/internal/core/domain"
 	"github.com/AdventurerAmer/shortner/internal/core/ports"
-	"github.com/AdventurerAmer/shortner/internal/repos/analyticclicks"
+	"github.com/AdventurerAmer/shortner/internal/repos/analyticsrepo"
 	"github.com/AdventurerAmer/shortner/logging"
 	"github.com/AdventurerAmer/shortner/telemetry"
 )
@@ -26,7 +26,7 @@ func Run() int {
 		return 1
 	}
 
-	workerCfg := &cfg.Workers.ClicksBatcher
+	workerCfg := &cfg.Workers.Clicks
 	logger := cfg.NewLogger().With(slog.String("worker", workerCfg.Name))
 
 	var clickHouseCtx infra.ClickHouse
@@ -44,10 +44,10 @@ func Run() int {
 	}
 	defer inf.Shutdown(context.Background())
 
-	analyticClicksRepo := analyticclicks.NewClickHouse(
+	analyticsRepo := analyticsrepo.NewClickHouse(
 		cfg.Infra.ClickHouse.Database, clickHouseCtx.Conn, ports.NewCacheStub(), time.Second)
 
-	reader := infra.NewKafkaReader(cfg.Infra.Kafka, domain.Topic(workerCfg.Topic), workerCfg.Group)
+	reader := infra.NewKafkaReader(cfg.Infra.Kafka, domain.Topic(workerCfg.Topic), workerCfg.Name)
 	defer func() {
 		if err := reader.Close(); err != nil {
 			logger.Error("'reader.Close' failed", "error", err)
@@ -67,7 +67,7 @@ func Run() int {
 		logger.Info("recived event", "status", "started", "key", msg.Key)
 		defer logger.Info("recived event", "status", "ended", "key", msg.Key)
 
-		var event domain.ClicksBatchEvent
+		var event domain.ClickEvent
 		if err := json.Unmarshal(msg.Data, &event); err != nil {
 			return fmt.Errorf("'json.Unmarshal' failed: %w", err)
 		}
@@ -75,7 +75,7 @@ func Run() int {
 		dctx, cancel := context.WithTimeout(ctx, domain.SendEventDefaultTimeout)
 		defer cancel()
 
-		if err := analyticClicksRepo.Put(dctx, event.UUIds, event.Aliases, event.Clicks); err != nil {
+		if err := analyticsRepo.Put(dctx, event.Id, event.Alias, event.Timestamp); err != nil {
 			return fmt.Errorf("'analyticClicksRepo.Put' failed: %w", err)
 		}
 

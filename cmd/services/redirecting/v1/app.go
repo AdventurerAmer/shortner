@@ -15,7 +15,7 @@ import (
 	"github.com/AdventurerAmer/shortner/internal/core/domain"
 	"github.com/AdventurerAmer/shortner/internal/core/ports"
 	"github.com/AdventurerAmer/shortner/internal/core/services/redirecting"
-	"github.com/AdventurerAmer/shortner/internal/repos/urlmapping"
+	"github.com/AdventurerAmer/shortner/internal/repos/urlmappingsrepo"
 	"github.com/AdventurerAmer/shortner/logging"
 )
 
@@ -51,7 +51,7 @@ func Run() int {
 
 	redisCache := caches.NewRedis(redisCtx.Client)
 
-	URLMappingRepo := urlmapping.NewCassandra(
+	URLMappingRepo := urlmappingsrepo.NewCassandra(
 		cassandraCtx.Session,
 		cfg.Infra.Cassandra.Keyspace,
 		redisCache)
@@ -66,7 +66,10 @@ func Run() int {
 
 	writer := infra.NewKafkaWriter(cfg.Infra.Kafka, domain.ClicksTopic)
 	defer func() {
-		_ = writer.Close()
+		err := writer.Close()
+		if err != nil {
+			logger.Error("failed to close kafka writer", "error", err)
+		}
 	}()
 
 	producer := brokers.NewKafkaProducer(writer)

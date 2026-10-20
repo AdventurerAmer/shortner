@@ -9,14 +9,14 @@ import (
 
 	"github.com/AdventurerAmer/shortner/config"
 	"github.com/AdventurerAmer/shortner/internal/core/ports"
-	"github.com/AdventurerAmer/shortner/internal/repos/urlmapping"
+	"github.com/AdventurerAmer/shortner/internal/repos/urlmappingsrepo"
 	"github.com/AdventurerAmer/shortner/snowflake"
 	"github.com/AdventurerAmer/shortner/test"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/uuid"
 
-	cassandraMigratorV1 "github.com/AdventurerAmer/shortner/cmd/migrators/cassandra/v1"
+	cassandraMigratorv1 "github.com/AdventurerAmer/shortner/cmd/migrators/cassandra/v1"
 )
 
 func TestShorteningService_CassandraRepo(t *testing.T) {
@@ -33,12 +33,12 @@ func TestShorteningService_CassandraRepo(t *testing.T) {
 	cassandra := test.Cassandra(ctx, t)
 	defer cassandra.Disconnect(context.Background())
 
-	if err := cassandraMigratorV1.Run(ctx, &cassandra); err != nil {
+	if err := cassandraMigratorv1.Run(ctx, &cassandra); err != nil {
 		t.Fatal(err)
 	}
 
 	keyspace := cfg.Infra.Cassandra.Keyspace
-	repo := urlmapping.NewCassandra(cassandra.Session, keyspace, ports.NewCacheStub())
+	repo := urlmappingsrepo.NewCassandra(cassandra.Session, keyspace, ports.NewCacheStub())
 
 	srvCfg := Config{
 		URLMappingRepo: repo,

@@ -9,7 +9,7 @@ import (
 	"github.com/AdventurerAmer/shortner/config"
 	"github.com/AdventurerAmer/shortner/internal/core/domain"
 	"github.com/AdventurerAmer/shortner/internal/core/ports"
-	"github.com/AdventurerAmer/shortner/internal/repos/urlmapping"
+	"github.com/AdventurerAmer/shortner/internal/repos/urlmappingsrepo"
 	"github.com/AdventurerAmer/shortner/snowflake"
 	"github.com/AdventurerAmer/shortner/test"
 	"github.com/google/go-cmp/cmp"
@@ -36,7 +36,7 @@ func TestRedirectingService_CassandraRepo(t *testing.T) {
 	}
 
 	keyspace := cfg.Infra.Cassandra.Keyspace
-	repo := urlmapping.NewCassandra(cassandra.Session, keyspace, ports.NewCacheStub())
+	repo := urlmappingsrepo.NewCassandra(cassandra.Session, keyspace, ports.NewCacheStub())
 
 	srvCfg := Config{
 		URLMappingRepo: repo,

@@ -19,13 +19,7 @@ services:
 workers:
   clicks:
     name: clicks
-    group: analytics
     topic: clicks
-  
-  clicksBatcher:
-    name: clicksBatcher
-    group: analytics
-    topic: clicksBatch
   
 constants:
   analyticClicksCacheTTL: 5s
