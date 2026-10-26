@@ -19,7 +19,7 @@ type cassandraRepo struct {
 	cache    ports.Cache
 }
 
-func NewCassandra(session *gocql.Session, keyspace string, cache ports.Cache) ports.URLMappingRepository {
+func NewCassandra(session *gocql.Session, keyspace string, cache ports.Cache) ports.URLMappingsRepository {
 	return &cassandraRepo{session: session, keyspace: keyspace, cache: cache}
 }
 

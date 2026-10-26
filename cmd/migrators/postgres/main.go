@@ -1,0 +1,49 @@
+package main
+
+import (
+	"context"
+	"log/slog"
+	"os"
+	"os/signal"
+	"syscall"
+
+	postgresmigratorv1 "github.com/AdventurerAmer/shortner/cmd/migrators/postgres/v1"
+	"github.com/AdventurerAmer/shortner/config"
+	"github.com/AdventurerAmer/shortner/infra"
+	"github.com/AdventurerAmer/shortner/logging"
+)
+
+func main() {
+	cfg, err := config.Load()
+	if err != nil {
+		logger := logging.New()
+		logger.Error("failed to load config", "error", err)
+		os.Exit(1)
+	}
+
+	logger := cfg.NewLogger().With(slog.String("migrator", "postgres"))
+
+	var postgresCtx infra.Postgres
+
+	inf, err := infra.New()
+	if err != nil {
+		logger.Error("'infra.New()' failed", "error", err)
+		os.Exit(1)
+	}
+	inf.BindPostgres(cfg.Infra.Postgres, &postgresCtx)
+
+	if err := inf.Start(context.Background()); err != nil {
+		logger.Error("infrastructure connection failed", "error", err)
+		os.Exit(1)
+	}
+	defer inf.Shutdown(context.Background())
+
+	sigCtx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer cancel()
+
+	dctx := logging.Set(sigCtx, logger)
+	if err := postgresmigratorv1.Run(dctx, &postgresCtx); err != nil {
+		logger.Error("'postgresmigratorv1.Run' failed", "error", err)
+		os.Exit(1)
+	}
+}

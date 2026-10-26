@@ -7,7 +7,7 @@ import (
 	"github.com/AdventurerAmer/shortner/internal/core/domain"
 )
 
-type URLMappingRepository interface {
+type URLMappingsRepository interface {
 	Create(ctx context.Context, mapping *domain.URLMapping) error
 	Get(ctx context.Context, alias string) (*domain.URLMapping, error)
 	Delete(ctx context.Context, alias string) error

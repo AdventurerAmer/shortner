@@ -10,7 +10,7 @@ import (
 )
 
 type Config struct {
-	URLMappingRepo ports.URLMappingRepository
+	URLMappingRepo ports.URLMappingsRepository
 }
 
 type service struct {

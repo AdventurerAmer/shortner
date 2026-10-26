@@ -36,7 +36,7 @@ func Run() int {
 		logger.Error("'infra.New()' failed", "error", err)
 		return 1
 	}
-	inf.BindRedis(cfg.Infra.RedisAnalytics, &redisCtx)
+	inf.BindRedis(cfg.Infra.Redis, &redisCtx)
 	inf.BindClickHouse(cfg.Infra.ClickHouse, &clickHouseCtx)
 
 	if err := inf.Start(context.Background()); err != nil {
@@ -48,7 +48,6 @@ func Run() int {
 	redisCache := caches.NewRedis(redisCtx.Client)
 
 	ttl := cfg.Constants.AnalyticClicksCacheTTL
-	logger.Info("cfg.Constants.AnalyticClicksCacheTTL", "ttl", ttl)
 	analyticClicksRepo := analyticsrepo.NewClickHouse(cfg.Infra.ClickHouse.Database, clickHouseCtx.Conn, redisCache, ttl)
 
 	analyticsCfg := analytics.Config{

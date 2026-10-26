@@ -1,6 +1,21 @@
 name: "shortner"
 
 services:
+  postgres:
+    image: postgres:18.3-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: auth
+      # Note: Postgres 18 defaults to /var/lib/postgresql/18/docker. 
+      # Explicitly set PGDATA to maintain reliable named volume mappings.
+      PGDATA: /var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+      
   cassandra:
     image: cassandra:5.0.8
     ports:
@@ -51,16 +66,6 @@ services:
     volumes:
       - redis-data:/data
       - ./redis/users.acl:/etc/redis/users.acl
-  
-  redis-analytics:
-    image: redis:8.6
-    restart: unless-stopped
-    command: ["redis-server", "--aclfile", "/etc/redis/users.acl"]            
-    ports:
-      - "6380:6379"              
-    volumes:
-      - redis-analytics-data:/data
-      - ./redis/users.acl:/etc/redis/users.acl
     
   redis-insight:
     image: redis/redisinsight:3.2
@@ -71,7 +76,6 @@ services:
       - redis-insight-data:/data
     depends_on:
       - redis
-      - redis-analytics
     extra_hosts:
       - "host.docker.internal:host-gateway"
   
@@ -188,6 +192,7 @@ services:
       - prometheus
     
 volumes:
+  postgres_data:
   cassandra-data:
   clickhouse-data:
   clickhouse-logs:

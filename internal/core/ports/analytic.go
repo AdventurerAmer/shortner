@@ -13,7 +13,7 @@ type AnalyticsRepository interface {
 	Delete(ctx context.Context, eventId string) error
 }
 
-type AnalyticService interface {
+type AnalyticsService interface {
 	Get(ctx context.Context, req GetAnalyticRequest) (GetAnalyticResponse, error)
 }
 
@@ -22,5 +22,5 @@ type GetAnalyticRequest struct {
 }
 
 type GetAnalyticResponse struct {
-	Analytic *domain.Analytic `json:"analyticStat"`
+	Analytic *domain.Analytic `json:"analytic"`
 }

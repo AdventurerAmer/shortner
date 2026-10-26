@@ -132,3 +132,8 @@ func (infra *Infra) BindRedis(cfg config.Redis, r *Redis) {
 	wrapper := &redisConfigWrapper{Redis: cfg}
 	infra.Bind(wrapper, r)
 }
+
+func (infra *Infra) BindPostgres(cfg config.Postgres, p *Postgres) {
+	wrapper := &postgresConfigWrapper{Postgres: cfg}
+	infra.Bind(wrapper, p)
+}

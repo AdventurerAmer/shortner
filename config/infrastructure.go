@@ -3,14 +3,31 @@ package config
 import (
 	"fmt"
 	"net"
+	"time"
 )
 
 type Infrastructure struct {
-	Cassandra      Cassandra  `koanf:"cassandra"`
-	ClickHouse     ClickHouse `koanf:"clickhouse"`
-	Redis          Redis      `koanf:"redis"`
-	RedisAnalytics Redis      `koanf:"redisAnalytics"`
-	Kafka          Kafka      `koanf:"kafka"`
+	Postgres   Postgres   `koanf:"postgres"`
+	Cassandra  Cassandra  `koanf:"cassandra"`
+	ClickHouse ClickHouse `koanf:"clickhouse"`
+	Redis      Redis      `koanf:"redis"`
+	Kafka      Kafka      `koanf:"kafka"`
+}
+
+type Postgres struct {
+	Host               string        `koanf:"host" validate:"required,hostname"`
+	Port               int           `koanf:"port" validate:"required,min=1024,max=65535"`
+	Username           string        `koanf:"username" validate:"required,max=128"`
+	Password           string        `koanf:"password" validate:"required,max=128"`
+	Database           string        `koanf:"database" validate:"required"`
+	SSLMode            string        `koanf:"sslMode" validate:"required,oneof=disable allow prefer require verify-ca verify-full"`
+	MaxOpenConnections int           `koanf:"maxOpenConnections" validate:"required,min=1"`
+	MaxIdelConnections int           `koanf:"maxIdelConnections" validate:"required,min=1"`
+	MaxIdelTime        time.Duration `koanf:"maxIdelTime" validate:"required,min=1"`
+}
+
+func (p Postgres) Addr() string {
+	return net.JoinHostPort(p.Host, fmt.Sprintf("%d", p.Port))
 }
 
 type Cassandra struct {

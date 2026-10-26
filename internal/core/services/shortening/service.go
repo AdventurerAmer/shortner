@@ -14,7 +14,7 @@ import (
 
 type Config struct {
 	ShortURLPrefix string
-	URLMappingRepo ports.URLMappingRepository
+	URLMappingRepo ports.URLMappingsRepository
 	IdGenerator    *snowflake.Generator
 }
 

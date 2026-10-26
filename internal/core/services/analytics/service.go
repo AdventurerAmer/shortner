@@ -17,7 +17,7 @@ type service struct {
 	Config
 }
 
-func New(cfg Config) ports.AnalyticService {
+func New(cfg Config) ports.AnalyticsService {
 	return &service{
 		Config: cfg,
 	}

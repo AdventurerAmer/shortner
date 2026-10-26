@@ -2,6 +2,16 @@
     "version": "2.0.0",
     "tasks": [
         {
+            "label": "Run Postgres Migrations",
+            "type": "shell",
+            "command": "make postgres",
+            "group": "none",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            }
+        },
+        {
             "label": "Run Cassandra Migrations",
             "type": "shell",
             "command": "make cassandra",
@@ -84,6 +94,7 @@
                 "clear": false
             },
             "dependsOn": [
+                "Run Postgres Migrations",
                 "Run Cassandra Migrations",
                 "Run ClickHouse Migrations",
                 "Run Shortening",

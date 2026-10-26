@@ -14,6 +14,10 @@ PHONY: clicks
 clicks:
 	@go run ./cmd/workers/clicks -env-file=.env.local
 
+PHONY: postgres
+postgres:
+	@go run ./cmd/migrators/postgres -env-file=.env.local
+
 PHONY: cassandra
 cassandra:
 	@go run ./cmd/migrators/cassandra -env-file=.env.local
