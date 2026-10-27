@@ -47,7 +47,7 @@ func Run() int {
 	analyticsRepo := analyticsrepo.NewClickHouse(
 		cfg.Infra.ClickHouse.Database, clickHouseCtx.Conn, ports.NewCacheStub(), time.Second)
 
-	reader := infra.NewKafkaReader(cfg.Infra.Kafka, domain.Topic(workerCfg.Topic), workerCfg.Name)
+	reader := infra.NewKafkaReader(cfg.Infra.Kafka, workerCfg.Name, domain.ClicksTopic)
 	defer func() {
 		if err := reader.Close(); err != nil {
 			logger.Error("'reader.Close' failed", "error", err)

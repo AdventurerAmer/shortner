@@ -7,6 +7,7 @@ import (
 )
 
 type Services struct {
+	Users       Service `koanf:"users"`
 	Shortening  Service `koanf:"shortening"`
 	Redirecting Service `koanf:"redirecting"`
 	Analytics   Service `koanf:"analytics"`

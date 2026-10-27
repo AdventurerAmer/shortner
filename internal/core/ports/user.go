@@ -40,6 +40,11 @@ type UsersService interface {
 	Get(ctx context.Context, req GetUserRequest) (GetUserResponse, error)
 	Update(ctx context.Context, req UpdateUserRequest) (UpdateUserResponse, error)
 	Delete(ctx context.Context, req DeleteUserRequest) (DeleteUserResponse, error)
+	SendVerification(ctx context.Context, req SendVerificationRequest) (SendVerificationResponse, error)
+	Verify(ctx context.Context, req VerifyUserRequest) (VerifyResponse, error)
+	ForgotPassword(ctx context.Context, req ForgotPasswordRequest) (ForgotPasswordResponse, error)
+	ResetPassword(ctx context.Context, req ResetPasswordRequest) (ResetPasswordResponse, error)
+	ChangePassword(ctx context.Context, req ChangePasswordRequest) (ChangePasswordResponse, error)
 }
 
 type RegisterUserRequest struct {
@@ -74,5 +79,48 @@ type DeleteUserRequest struct {
 }
 
 type DeleteUserResponse struct {
+	Message string `json:"message"`
+}
+
+type VerifyUserRequest struct {
+	Token string `json:"token" form:"token" validate:"required,len=43"`
+}
+
+type VerifyResponse struct {
+	Message string `json:"message"`
+}
+
+type SendVerificationRequest struct {
+	Email string `json:"email" validate:"required,email"`
+}
+
+type SendVerificationResponse struct {
+	Message string `json:"message"`
+}
+
+type ForgotPasswordRequest struct {
+	Email string `json:"email" validate:"required,email"`
+}
+
+type ForgotPasswordResponse struct {
+	Message string `json:"message"`
+}
+
+type ResetPasswordRequest struct {
+	Token    string `json:"token" validate:"required,len=43"`
+	Password string `json:"password" validate:"required,min=8,max=128"`
+}
+
+type ResetPasswordResponse struct {
+	Message string `json:"message"`
+}
+
+type ChangePasswordRequest struct {
+	UserId          string `json:"userId" validate:"required"`
+	CurrentPassword string `json:"currentPassword" validate:"required"`
+	NewPassword     string `json:"newPassword" validate:"required,min=8,max=128"`
+}
+
+type ChangePasswordResponse struct {
 	Message string `json:"message"`
 }

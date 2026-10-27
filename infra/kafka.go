@@ -37,7 +37,7 @@ func NewKafkaWriter(cfg config.Kafka, topic domain.Topic) *kafka.Writer {
 	return writer
 }
 
-func NewKafkaReader(cfg config.Kafka, topic domain.Topic, groupId string) *kafka.Reader {
+func NewKafkaReader(cfg config.Kafka, groupId string, topic domain.Topic) *kafka.Reader {
 	mechanism := plain.Mechanism{
 		Username: cfg.Username,
 		Password: cfg.Password,

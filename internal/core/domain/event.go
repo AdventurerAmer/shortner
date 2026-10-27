@@ -7,8 +7,10 @@ import (
 type Topic string
 
 const (
-	ClicksTopic Topic = "clicks"
-	UsersTopic  Topic = "users"
+	ClicksTopic             Topic = "clicks"
+	UserCreatedTopic        Topic = "users.created"
+	UserVerificationTopic   Topic = "users.verification"
+	UserPasswordResetTopcic Topic = "users.passwordReset"
 )
 
 type ClickEvent struct {
@@ -30,7 +32,7 @@ type UserVerificationEvent struct {
 	Token  string `json:"token"`
 }
 
-type PasswordResetEvent struct {
+type UserPasswordResetEvent struct {
 	Id     string `json:"id"`
 	UserId string `json:"userId"`
 	Token  string `json:"token"`

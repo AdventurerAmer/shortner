@@ -26,6 +26,8 @@ type Config struct {
 	Observability Observability  `koanf:"observability"`
 	Services      Services       `koanf:"services"`
 	Workers       Workers        `koanf:"workers"`
+	Mailer        Mailer         `koanf:"mailer"`
+	Tokens        Tokens         `koanf:"tokens"`
 	Constants     Constants      `koanf:"constants"`
 }
 

@@ -6,12 +6,12 @@ import (
 
 type Workers struct {
 	Clicks Worker `koanf:"clicks"`
+	Email  Worker `koanf:"email"`
 }
 
 type Worker struct {
 	Name                    string        `koanf:"name" validate:"required,max=128"`
 	Version                 string        `koanf:"version" validate:"required,semver"`
-	Topic                   string        `koanf:"topic" validate:"required,oneof=clicks clicksBatch"`
 	DefaultTimeout          time.Duration `koanf:"defaultTimeout" validate:"required,min=1s"`
 	GracefulShutdownTimeout time.Duration `koanf:"gracefulShutdownTimeout" validate:"required,min=1s"`
 	AckTimeout              time.Duration `koanf:"AckTimeout" validate:"required,min=1s"`

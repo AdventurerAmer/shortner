@@ -8,7 +8,7 @@ func HTTPStatus(code Code) int {
 	switch code {
 	case CodeInternal:
 		return http.StatusInternalServerError
-	case CodeValidation:
+	case CodeValidation, CodeFailedPrecondition:
 		return http.StatusBadRequest
 	case CodeResourceNotFound:
 		return http.StatusNotFound

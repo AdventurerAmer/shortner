@@ -191,6 +191,19 @@ services:
     depends_on:
       - prometheus
     
+  mailpit:
+    image: axllent/mailpit:v1.31.3
+    restart: unless-stopped
+    ports:
+      - "1025:1025"   # SMTP
+      - "8025:8025"   # Web UI
+    environment:
+      MP_SMTP_AUTH: "superuser:secretpass"
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+      MP_DATABASE: /data/mailpit.db
+    volumes:
+      - mailpit-data:/data
+
 volumes:
   postgres_data:
   cassandra-data:
@@ -201,3 +214,4 @@ volumes:
   redis-insight-data:
   kafka-data:
   prometheus-data:
+  mailpit-data:

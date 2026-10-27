@@ -6,6 +6,10 @@ func NewInternal(err error) *Error {
 	return Wrap(err, CodeInternal, "internal server error")
 }
 
+func NewFailedPrecondition(message string) *Error {
+	return Wrap(nil, CodeFailedPrecondition, message)
+}
+
 func NewValidation(fields map[string]string) *Error {
 	err := New(CodeValidation, "one or more invalid fields")
 	err.Fields = fields

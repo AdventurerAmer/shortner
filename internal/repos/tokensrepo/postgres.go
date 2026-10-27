@@ -1,4 +1,4 @@
-package usersrepo
+package tokensrepo
 
 import (
 	"context"

@@ -15,11 +15,17 @@ services:
   analytics:
     name: analytics
     port: 3032
+  
+  users:
+    name: shortening
+    port: 3033
 
 workers:
   clicks:
     name: clicks
-    topic: clicks
+  
+  email:
+    name: email
   
 constants:
   analyticClicksCacheTTL: 5s
