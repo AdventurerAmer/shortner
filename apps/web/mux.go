@@ -85,14 +85,14 @@ func (mux *Mux) composeHTTPHandlerFunc(handler Handler) http.HandlerFunc {
 		}
 		// We can have nil 'resp' in case of a (302) redirection for-example
 		if resp != nil {
-			if err := writeJSON(resp, w); err != nil {
+			if err := WriteJSON(resp, w); err != nil {
 				logger.Error("failed to write resposne to client", "error", err)
 			}
 		}
 	}
 }
 
-func writeJSON(resp any, w http.ResponseWriter) error {
+func WriteJSON(resp any, w http.ResponseWriter) error {
 	payload, err := json.Marshal(resp)
 	if err != nil {
 		return fmt.Errorf("marshaling payload to json failed: %w", err)

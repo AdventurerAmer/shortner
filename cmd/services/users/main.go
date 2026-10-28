@@ -3,9 +3,9 @@ package main
 import (
 	"os"
 
-	redirectingV1 "github.com/AdventurerAmer/shortner/cmd/services/redirecting/v1"
+	usersv1 "github.com/AdventurerAmer/shortner/cmd/services/users/v1"
 )
 
 func main() {
-	os.Exit(redirectingV1.Run())
+	os.Exit(usersv1.Run())
 }

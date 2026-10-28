@@ -115,7 +115,7 @@ func Run() int {
 	mux.Use(web.Recover(cfg.Env))
 	mux.Use(web.Timeout(serviceCfg.DefaultTimeout))
 
-	mux.Get("/v1/redirect/{alias}", handlers.redirect)
+	mux.Get("/api/v1/redirect/{alias}", handlers.redirect)
 
 	app := web.New(serviceCfg, cfg, logger)
 	if err := app.Run(mux, readiness); err != nil {

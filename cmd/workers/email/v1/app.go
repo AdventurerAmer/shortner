@@ -134,7 +134,7 @@ func (h *handler) verifyUser(ctx context.Context, userId, token string, expiresA
 		return nil
 	}
 
-	addr := h.cfg.Services.Users.Addr()
+	addr := h.cfg.Services.Auth.Addr()
 
 	data := struct {
 		Name      string
@@ -142,7 +142,7 @@ func (h *handler) verifyUser(ctx context.Context, userId, token string, expiresA
 		ExpiresIn time.Duration
 	}{
 		Name:      user.DisplayName,
-		VerifyURL: fmt.Sprintf("http://%s/api/v1/users/verify?token=%s", addr, token),
+		VerifyURL: fmt.Sprintf("http://%s/api/v1/auth/verify?token=%s", addr, token),
 		ExpiresIn: expiresAt.Sub(now),
 	}
 

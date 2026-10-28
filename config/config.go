@@ -27,6 +27,7 @@ type Config struct {
 	Services      Services       `koanf:"services"`
 	Workers       Workers        `koanf:"workers"`
 	Mailer        Mailer         `koanf:"mailer"`
+	Auth          Auth           `koanf:"auth"`
 	Tokens        Tokens         `koanf:"tokens"`
 	Constants     Constants      `koanf:"constants"`
 }

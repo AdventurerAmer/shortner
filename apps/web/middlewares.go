@@ -32,13 +32,11 @@ func (rw *responseWriter) WriteHeader(code int) {
 
 func Trace(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// 1. Extract remote context from request headers
 		ctx := otel.GetTextMapPropagator().Extract(
 			r.Context(),
 			propagation.HeaderCarrier(r.Header),
 		)
 
-		// 2. Create span name (common pattern)
 		spanName := fmt.Sprintf("%s %s", r.Method, r.URL.Path)
 
 		sctx, span := telemetry.NewSpan(ctx, spanName, semconv.HTTPMethodKey.String(r.Method),
@@ -56,7 +54,6 @@ func Trace(next http.HandlerFunc) http.HandlerFunc {
 
 		next(rw, r.WithContext(dctx))
 
-		// 6. Set final status
 		span.SetAttributes(semconv.HTTPStatusCodeKey.Int(rw.statusCode))
 		if rw.statusCode >= 500 {
 			span.SetStatus(codes.Error, http.StatusText(rw.statusCode))
@@ -111,7 +108,7 @@ func Recover(env config.Env) Middleware {
 
 					w.WriteHeader(status)
 
-					if err := writeJSON(resp, w); err != nil {
+					if err := WriteJSON(resp, w); err != nil {
 						logger.Error("failed to write resposne to client", "error", err)
 					}
 				}

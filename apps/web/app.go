@@ -50,7 +50,7 @@ func (app *App) Run(mux *Mux, readiness health.ReadinessHandler) error {
 		resp := health.LivenessCheck{
 			Status: health.LivenessStatusUp,
 		}
-		writeJSON(resp, w)
+		WriteJSON(resp, w)
 	}
 	mux.serveMux.HandleFunc("/livez", livez)
 
@@ -60,7 +60,7 @@ func (app *App) Run(mux *Mux, readiness health.ReadinessHandler) error {
 				Status: health.ReadinessStatusNotReady,
 			}
 			w.WriteHeader(http.StatusServiceUnavailable)
-			writeJSON(resp, w)
+			WriteJSON(resp, w)
 			return
 		}
 
@@ -77,7 +77,7 @@ func (app *App) Run(mux *Mux, readiness health.ReadinessHandler) error {
 			w.WriteHeader(http.StatusServiceUnavailable)
 		}
 
-		writeJSON(resp, w)
+		WriteJSON(resp, w)
 	}
 	mux.serveMux.HandleFunc("/readyz", readyz)
 

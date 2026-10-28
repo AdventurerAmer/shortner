@@ -17,8 +17,12 @@ services:
     port: 3032
   
   users:
-    name: shortening
+    name: users
     port: 3033
+  
+  auth:
+    name: auth
+    port: 3034
 
 workers:
   clicks:
