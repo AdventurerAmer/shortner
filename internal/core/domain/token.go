@@ -17,4 +17,5 @@ type Token struct {
 	CreatedAt time.Time  `json:"createdAt"`
 	ExpiresAt time.Time  `json:"expiresAt"`
 	UsedAt    *time.Time `json:"usedAt"`
+	IsRevoked bool       `json:"isRevoked"`
 }

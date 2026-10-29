@@ -153,16 +153,8 @@ func Run() int {
 	mux.Use(web.Timeout(serviceCfg.DefaultTimeout))
 	mux.Use(authMiddleware)
 
-	mux.Get("/api/v1/users/me", handlers.get)
-	mux.Put("/api/v1/users/me", handlers.update)
-
-	// mux.Post("/api/v1/users/register", handlers.register)
-	// mux.Post("/api/v1/users/verify", handlers.sendVerification)
-	// mux.Get("/api/v1/users/verify", handlers.verify)
-
-	// mux.Post("/api/v1/users/change-password", handlers.changePassword)
-	// mux.Post("/api/v1/users/forgot-password", handlers.forgotPassword)
-	// mux.Get("/api/v1/users/reset-password", handlers.resetPassword)
+	mux.Get("/api/v1/users/me", nil, handlers.get)
+	mux.Put("/api/v1/users/me", nil, handlers.update)
 
 	app := web.New(serviceCfg, cfg, logger)
 	if err := app.Run(mux, readiness); err != nil {

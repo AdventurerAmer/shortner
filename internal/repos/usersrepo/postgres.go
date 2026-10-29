@@ -22,11 +22,11 @@ func NewPostgres(db *sql.DB) ports.UsersRepository {
 
 func (repo *postgresRepo) Create(ctx context.Context, user *domain.User) error {
 	query := `
-		INSERT INTO users (email, password_hash, display_name, is_verified, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		INSERT INTO users (email, password_hash, display_name, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5)
 		RETURNING id
 	`
-	row := postgresutils.QueryRow(ctx, repo.db, query, user.Email, user.PasswordHash, user.DisplayName, user.IsVerified, user.CreatedAt, user.CreatedAt)
+	row := postgresutils.QueryRow(ctx, repo.db, query, user.Email, user.PasswordHash, user.DisplayName, user.CreatedAt, user.UpdatedAt)
 	if err := row.Scan(&user.Id); err != nil {
 		return fmt.Errorf("'row.Scan' failed: %w", err)
 	}
@@ -36,14 +36,16 @@ func (repo *postgresRepo) Create(ctx context.Context, user *domain.User) error {
 
 func (repo *postgresRepo) Get(ctx context.Context, id string) (*domain.User, error) {
 	query := `
-		SELECT email, password_hash, display_name, is_verified, created_at, updated_at, version 
+		SELECT email, password_hash, display_name, is_verified, is_pending_delete, created_at, updated_at, version 
 		FROM users 
 		WHERE id = $1`
 
 	row := postgresutils.QueryRow(ctx, repo.db, query, id)
 
-	var user domain.User
-	if err := row.Scan(&user.Email, &user.PasswordHash, &user.DisplayName, &user.IsVerified, &user.CreatedAt, &user.UpdatedAt, &user.Version); err != nil {
+	user := domain.User{
+		Id: id,
+	}
+	if err := row.Scan(&user.Email, &user.PasswordHash, &user.DisplayName, &user.IsVerified, &user.IsPendingDelete, &user.CreatedAt, &user.UpdatedAt, &user.Version); err != nil {
 		return nil, fmt.Errorf("'row.Scan' failed: %w", err)
 	}
 	return &user, nil
@@ -51,12 +53,14 @@ func (repo *postgresRepo) Get(ctx context.Context, id string) (*domain.User, err
 
 func (repo *postgresRepo) GetByEmail(ctx context.Context, email string) (*domain.User, error) {
 	query := `
-		SELECT id, password_hash, display_name, is_verified, created_at, updated_at, version 
+		SELECT id, password_hash, display_name, is_verified, is_pending_delete, created_at, updated_at, version 
 		FROM users 
 		WHERE email = $1`
 	row := postgresutils.QueryRow(ctx, repo.db, query, email)
-	var user domain.User
-	if err := row.Scan(&user.Id, &user.PasswordHash, &user.DisplayName, &user.IsVerified, &user.CreatedAt, &user.UpdatedAt, &user.Version); err != nil {
+	user := domain.User{
+		Email: email,
+	}
+	if err := row.Scan(&user.Id, &user.PasswordHash, &user.DisplayName, &user.IsVerified, &user.IsPendingDelete, &user.CreatedAt, &user.UpdatedAt, &user.Version); err != nil {
 		return nil, fmt.Errorf("'row.Scan' failed: %w", err)
 	}
 	return &user, nil
@@ -65,11 +69,11 @@ func (repo *postgresRepo) GetByEmail(ctx context.Context, email string) (*domain
 func (repo *postgresRepo) Update(ctx context.Context, user *domain.User) error {
 	query := `
 		UPDATE users
-		SET email = $1, password_hash = $2, display_name = $3, is_verified = $4, updated_at = $5, version = version + 1
-		WHERE id = $6 AND version = $7
+		SET email = $1, password_hash = $2, display_name = $3, is_verified = $4, is_pending_delete = $5, updated_at = $6, version = version + 1
+		WHERE id = $7 AND version = $8
 		RETURNING version
 	`
-	row := postgresutils.QueryRow(ctx, repo.db, query, user.Email, user.PasswordHash, user.DisplayName, user.IsVerified, user.UpdatedAt, user.Id, user.Version)
+	row := postgresutils.QueryRow(ctx, repo.db, query, user.Email, user.PasswordHash, user.DisplayName, user.IsVerified, user.IsPendingDelete, user.UpdatedAt, user.Id, user.Version)
 	if err := row.Scan(&user.Version); err != nil {
 		return fmt.Errorf("'row.Scan' failed: %w", err)
 	}

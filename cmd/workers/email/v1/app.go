@@ -20,6 +20,7 @@ import (
 	"github.com/AdventurerAmer/shortner/logging"
 	"github.com/AdventurerAmer/shortner/mailer"
 	"github.com/AdventurerAmer/shortner/telemetry"
+	"github.com/AdventurerAmer/shortner/validation"
 )
 
 func Run(templates *template.Template) int {
@@ -70,8 +71,8 @@ func Run(templates *template.Template) int {
 		mailer:    mailer.New(&cfg.Mailer),
 	}
 
-	handlerFunc := func(ctx context.Context, msg ports.ConsumerMessage) error {
-		dctx, span := telemetry.NewSpan(ctx, "Email Worker: Handle",
+	onUserCreated := func(ctx context.Context, msg ports.ConsumerMessage) error {
+		dctx, span := telemetry.NewSpan(ctx, "Email Worker: onUserCreated",
 			telemetry.StrAttr("key", msg.Key))
 		defer span.End()
 
@@ -91,7 +92,57 @@ func Run(templates *template.Template) int {
 
 		return nil
 	}
-	if err := app.Run(handlerFunc); err != nil {
+
+	onVerificationCreated := func(ctx context.Context, msg ports.ConsumerMessage) error {
+		dctx, span := telemetry.NewSpan(ctx, "Email Worker: onVerificationCreated",
+			telemetry.StrAttr("key", msg.Key))
+		defer span.End()
+
+		logger := logging.Get(dctx)
+
+		logger.Info("recived event", "status", "started", "key", msg.Key)
+		defer logger.Info("recived event", "status", "ended", "key", msg.Key)
+
+		var e domain.UserVerificationEvent
+		if err := json.Unmarshal(msg.Data, &e); err != nil {
+			return fmt.Errorf("'json.Unmarshal' failed: %w", err)
+		}
+
+		if err := h.verifyUser(ctx, e.UserId, e.Token, e.ExpiresAt); err != nil {
+			return fmt.Errorf("'h.verifyUser' failed: %w", err)
+		}
+
+		return nil
+	}
+
+	onPasswordReset := func(ctx context.Context, msg ports.ConsumerMessage) error {
+		dctx, span := telemetry.NewSpan(ctx, "Email Worker: onPasswordReset",
+			telemetry.StrAttr("key", msg.Key))
+		defer span.End()
+
+		logger := logging.Get(dctx)
+
+		logger.Info("recived event", "status", "started", "key", msg.Key)
+		defer logger.Info("recived event", "status", "ended", "key", msg.Key)
+
+		var e domain.UserPasswordResetEvent
+		if err := json.Unmarshal(msg.Data, &e); err != nil {
+			return fmt.Errorf("'json.Unmarshal' failed: %w", err)
+		}
+
+		if err := h.resetPassword(ctx, e); err != nil {
+			return fmt.Errorf("'h.resetPassword' failed: %w", err)
+		}
+
+		return nil
+	}
+
+	handlers := map[domain.Topic]ports.ConsumerHandlerFunc{
+		domain.UserCreatedTopic:        onUserCreated,
+		domain.UserVerificationTopic:   onVerificationCreated,
+		domain.UserPasswordResetTopcic: onPasswordReset,
+	}
+	if err := app.Run(handlers); err != nil {
 		logger.Error("'app.Run' failed", "error", err)
 		return 1
 	}
@@ -155,6 +206,51 @@ func (h *handler) verifyUser(ctx context.Context, userId, token string, expiresA
 	message := mailer.Message{
 		To:      user.Email,
 		Subject: "Verify your account",
+		Body:    b.String(),
+	}
+	if err := h.mailer.Send(message); err != nil {
+		return fmt.Errorf("'mailer.Send' failed: %w", err)
+	}
+
+	return nil
+}
+
+func (h *handler) resetPassword(ctx context.Context, e domain.UserPasswordResetEvent) error {
+	if err := validation.Validate(e); err != nil {
+		return fmt.Errorf("validation failed: %w", err)
+	}
+
+	user, err := h.usersRepo.Get(ctx, e.UserId)
+	if err != nil {
+		return fmt.Errorf("'usersRepo.Get' failed: %w", err)
+	}
+
+	now := time.Now().UTC()
+	if now.After(e.ExpiresAt) {
+		return nil
+	}
+
+	addr := h.cfg.Services.Auth.Addr()
+
+	data := struct {
+		Name      string
+		ResetURL  string
+		ExpiresIn time.Duration
+	}{
+		Name:      user.DisplayName,
+		ResetURL:  fmt.Sprintf("http://%s/api/v1/auth/reset-password?token=%s", addr, e.Token),
+		ExpiresIn: e.ExpiresAt.Sub(now),
+	}
+
+	// TODO: have a buffer bool here...
+	var b bytes.Buffer
+	if err := h.templates.ExecuteTemplate(&b, "reset.html", data); err != nil {
+		return fmt.Errorf("'templates.ExecuteTemplate' failed: %w", err)
+	}
+
+	message := mailer.Message{
+		To:      user.Email,
+		Subject: "Reset your password",
 		Body:    b.String(),
 	}
 	if err := h.mailer.Send(message); err != nil {

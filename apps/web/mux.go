@@ -38,20 +38,36 @@ func (mux *Mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	mux.serve(w, r.WithContext(ctx))
 }
 
-func (mux *Mux) Post(route string, handler Handler) {
-	mux.serveMux.HandleFunc(fmt.Sprintf("POST %s", route), mux.composeHTTPHandlerFunc(handler))
+func (mux *Mux) Post(route string, middlewares []Middleware, handler Handler) {
+	s := mux.composeHTTPHandlerFunc(handler)
+	for _, m := range slices.Backward(middlewares) {
+		s = m(s)
+	}
+	mux.serveMux.HandleFunc(fmt.Sprintf("POST %s", route), s)
 }
 
-func (mux *Mux) Get(route string, handler Handler) {
-	mux.serveMux.HandleFunc(fmt.Sprintf("GET %s", route), mux.composeHTTPHandlerFunc(handler))
+func (mux *Mux) Get(route string, middlewares []Middleware, handler Handler) {
+	s := mux.composeHTTPHandlerFunc(handler)
+	for _, m := range slices.Backward(middlewares) {
+		s = m(s)
+	}
+	mux.serveMux.HandleFunc(fmt.Sprintf("GET %s", route), s)
 }
 
-func (mux *Mux) Put(route string, handler Handler) {
-	mux.serveMux.HandleFunc(fmt.Sprintf("PUT %s", route), mux.composeHTTPHandlerFunc(handler))
+func (mux *Mux) Put(route string, middlewares []Middleware, handler Handler) {
+	s := mux.composeHTTPHandlerFunc(handler)
+	for _, m := range slices.Backward(middlewares) {
+		s = m(s)
+	}
+	mux.serveMux.HandleFunc(fmt.Sprintf("PUT %s", route), s)
 }
 
-func (mux *Mux) Delete(route string, handler Handler) {
-	mux.serveMux.HandleFunc(fmt.Sprintf("DELETE %s", route), mux.composeHTTPHandlerFunc(handler))
+func (mux *Mux) Delete(route string, middlewares []Middleware, handler Handler) {
+	s := mux.composeHTTPHandlerFunc(handler)
+	for _, m := range slices.Backward(middlewares) {
+		s = m(s)
+	}
+	mux.serveMux.HandleFunc(fmt.Sprintf("DELETE %s", route), s)
 }
 
 func (mux *Mux) Use(m Middleware) {

@@ -83,19 +83,53 @@ func (h *handlers) verify(c *web.Context) (any, error) {
 	return resp, nil
 }
 
-// func (h *handlers) forgotPassword(c *web.Context) (any, error) {
-// 	dctx, span := telemetry.NewSpan(c.Ctx(), "handler: forgotPassword")
-// 	defer span.End()
+func (h *handlers) changePassword(c *web.Context) (any, error) {
+	dctx, span := telemetry.NewSpan(c.Ctx(), "handler: changePassword")
+	defer span.End()
 
-// 	var req ports.ForgotPasswordRequest
-// 	if err := c.BindJSON(&req); err != nil {
-// 		return nil, err
-// 	}
+	var req ports.ChangePasswordRequest
+	if err := c.BindJSON(&req); err != nil {
+		return nil, err
+	}
 
-// 	resp, err := h.service.ForgotPassword(dctx, req)
-// 	if err != nil {
-// 		return nil, fmt.Errorf("'service.ForgotPassword' failed: %w", err)
-// 	}
+	resp, err := h.service.ChangePassword(dctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("'service.ChangePassword' failed: %w", err)
+	}
 
-// 	return resp, nil
-// }
+	return resp, nil
+}
+
+func (h *handlers) forgotPassword(c *web.Context) (any, error) {
+	dctx, span := telemetry.NewSpan(c.Ctx(), "handler: forgotPassword")
+	defer span.End()
+
+	var req ports.ForgotPasswordRequest
+	if err := c.BindJSON(&req); err != nil {
+		return nil, err
+	}
+
+	resp, err := h.service.ForgotPassword(dctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("'service.ForgotPassword' failed: %w", err)
+	}
+
+	return resp, nil
+}
+
+func (h *handlers) resetPassword(c *web.Context) (any, error) {
+	dctx, span := telemetry.NewSpan(c.Ctx(), "handler: resetPassword")
+	defer span.End()
+
+	var req ports.ResetPasswordRequest
+	if err := c.BindJSON(&req); err != nil {
+		return nil, err
+	}
+
+	resp, err := h.service.ResetPassword(dctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("'service.ResetPassword' failed: %w", err)
+	}
+
+	return resp, nil
+}

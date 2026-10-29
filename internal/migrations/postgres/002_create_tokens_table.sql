@@ -7,5 +7,6 @@ CREATE TABLE IF NOT EXISTS tokens (
     hash   		  TEXT NOT NULL,
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
 	expires_at    TIMESTAMPTZ NOT NULL,
-    used_at    	  TIMESTAMPTZ NULL
+    used_at    	  TIMESTAMPTZ NULL,
+    is_revoked    BOOLEAN NOT NULL DEFAULT false
 );

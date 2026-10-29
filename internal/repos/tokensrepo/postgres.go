@@ -36,30 +36,50 @@ func (repo *postgresRepo) Create(ctx context.Context, token *domain.Token) error
 
 func (repo *postgresRepo) Get(ctx context.Context, tokenType domain.TokenType, hash string) (*domain.Token, error) {
 	query := `
-		SELECT id, user_id, created_at, expires_at, used_at 
+		SELECT id, user_id, created_at, expires_at, used_at, is_revoked 
 		FROM tokens
 		WHERE type = $1 AND hash = $2`
 
 	row := postgresutils.QueryRow(ctx, repo.db, query, tokenType, hash)
 
-	var token domain.Token
-	if err := row.Scan(&token.Id, &token.UserId, &token.CreatedAt, &token.ExpiresAt, &token.UsedAt); err != nil {
+	token := domain.Token{
+		Type: tokenType,
+		Hash: hash,
+	}
+	if err := row.Scan(&token.Id, &token.UserId, &token.CreatedAt, &token.ExpiresAt, &token.UsedAt, &token.IsRevoked); err != nil {
 		return nil, fmt.Errorf("'row.Scan' failed: %w", err)
 	}
 	return &token, nil
 }
 
 func (repo *postgresRepo) GetLast(ctx context.Context, userId string, tokenType domain.TokenType) (*domain.Token, error) {
-	return nil, nil
+	query := `
+		SELECT id, hash, created_at, expires_at, used_at, is_revoked 
+		FROM tokens
+		WHERE user_id = $1 AND type = $2
+		ORDER BY created_at DESC
+		LIMIT 1`
+
+	row := postgresutils.QueryRow(ctx, repo.db, query, userId, tokenType)
+
+	token := domain.Token{
+		Type:   tokenType,
+		UserId: userId,
+	}
+	if err := row.Scan(&token.Id, &token.Hash, &token.CreatedAt, &token.ExpiresAt, &token.UsedAt, &token.IsRevoked); err != nil {
+		return nil, fmt.Errorf("'row.Scan' failed: %w", err)
+	}
+	return &token, nil
 }
 
 func (repo *postgresRepo) Update(ctx context.Context, token *domain.Token) error {
 	query := `
 		UPDATE tokens
 		SET used_at = $1
-		WHERE id = $2
+		SET is_revoked = $2
+		WHERE id = $3
 	`
-	if _, err := postgresutils.Exec(ctx, repo.db, query, token.Id, token.UsedAt); err != nil {
+	if _, err := postgresutils.Exec(ctx, repo.db, query, token.UsedAt, token.IsRevoked, token.Id); err != nil {
 		return fmt.Errorf("'postgresutils.Exec' failed: %w", err)
 	}
 	return nil

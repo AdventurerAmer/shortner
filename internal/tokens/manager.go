@@ -56,21 +56,32 @@ func (tm *Manager) Check(ctx context.Context, plain string) (bool, *domain.Token
 		return false, nil, fmt.Errorf("'Repository.Get' failed: %w", err)
 	}
 
-	if token.UsedAt != nil {
-		return false, nil, nil
-	}
-
-	now := time.Now().UTC()
-	if now.After(token.ExpiresAt) {
+	if !tm.isTokenValid(token) {
 		return false, nil, nil
 	}
 
 	return true, token, nil
 }
 
-func (tm *Manager) Invalidate(ctx context.Context, token *domain.Token) error {
+func (tm *Manager) Use(ctx context.Context, token *domain.Token) error {
+	if !tm.isTokenValid(token) {
+		return errs.NewFailedPrecondition("expired or invalid token")
+	}
+
 	now := time.Now().UTC()
 	token.UsedAt = &now
+	if err := tm.Repository.Update(ctx, token); err != nil {
+		return fmt.Errorf("'Repository.Update' failed: %w", err)
+	}
+	return nil
+}
+
+func (tm *Manager) Revoke(ctx context.Context, token *domain.Token) error {
+	if !tm.isTokenValid(token) {
+		return errs.NewFailedPrecondition("expired or invalid token")
+	}
+
+	token.IsRevoked = true
 	if err := tm.Repository.Update(ctx, token); err != nil {
 		return fmt.Errorf("'Repository.Update' failed: %w", err)
 	}
@@ -93,4 +104,21 @@ func (tm *Manager) IsLastTokenStillValid(ctx context.Context, userId string) (bo
 	}
 
 	return true, nil
+}
+
+func (tm *Manager) isTokenValid(token *domain.Token) bool {
+	if token.IsRevoked {
+		return false
+	}
+
+	now := time.Now().UTC()
+	if now.After(token.ExpiresAt) {
+		return false
+	}
+
+	if token.UsedAt != nil {
+		return false
+	}
+
+	return true
 }

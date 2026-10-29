@@ -82,7 +82,7 @@ func Run() int {
 
 	handlers := newHandlers(service)
 
-	mux.Get("/v1/analytics/{alias}", handlers.get)
+	mux.Get("/v1/analytics/{alias}", nil, handlers.get)
 
 	app := web.New(serviceCfg, cfg, logger)
 	if err := app.Run(mux, readiness); err != nil {

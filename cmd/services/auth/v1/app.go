@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net/http"
+	"strings"
 
 	"github.com/AdventurerAmer/shortner/apps/web"
 	"github.com/AdventurerAmer/shortner/async/goorch"
@@ -12,6 +14,7 @@ import (
 	"github.com/AdventurerAmer/shortner/infra"
 	"github.com/AdventurerAmer/shortner/internal/brokers"
 	"github.com/AdventurerAmer/shortner/internal/core/domain"
+	"github.com/AdventurerAmer/shortner/internal/core/ports"
 	"github.com/AdventurerAmer/shortner/internal/core/services/auth"
 	"github.com/AdventurerAmer/shortner/internal/repos/tokensrepo"
 	"github.com/AdventurerAmer/shortner/internal/repos/usersrepo"
@@ -130,7 +133,7 @@ func Run() int {
 		return nil
 	}
 
-	// authMiddleware := newAuthMiddleware(authService)
+	authMiddleware := newAuthMiddleware(authService)
 
 	handlers := newHandlers(authService)
 
@@ -142,16 +145,15 @@ func Run() int {
 	mux.Use(web.Recover(cfg.Env))
 	mux.Use(web.Timeout(serviceCfg.DefaultTimeout))
 
-	mux.Post("/api/v1/auth/register", handlers.register)
-	mux.Post("/api/v1/auth/login", handlers.login)
+	mux.Post("/api/v1/auth/register", nil, handlers.register)
+	mux.Post("/api/v1/auth/login", nil, handlers.login)
 
-	mux.Post("/api/v1/auth/verify", handlers.sendVerification)
-	mux.Get("/api/v1/auth/verify", handlers.verify)
+	mux.Post("/api/v1/auth/verify", nil, handlers.sendVerification)
+	mux.Get("/api/v1/auth/verify", nil, handlers.verify)
 
-	// TODO: this should be authenticated
-	// mux.Post("/api/v1/auth/change-password", handlers.changePassword)
-	// mux.Post("/api/v1/auth/forgot-password", handlers.forgotPassword)
-	// mux.Get("/api/v1/auth/reset-password", handlers.resetPassword)
+	mux.Post("/api/v1/auth/change-password", []web.Middleware{authMiddleware}, handlers.changePassword)
+	mux.Post("/api/v1/auth/forgot-password", nil, handlers.forgotPassword)
+	mux.Get("/api/v1/auth/reset-password", nil, handlers.resetPassword)
 
 	app := web.New(serviceCfg, cfg, logger)
 	if err := app.Run(mux, readiness); err != nil {
@@ -162,33 +164,33 @@ func Run() int {
 	return 0
 }
 
-// type userIdContextKey struct{}
+type userIdContextKey struct{}
 
-// func userIdFromContext(ctx context.Context) string {
-// 	userId, _ := ctx.Value(userIdContextKey{}).(string)
-// 	return userId
-// }
+func userIdFromContext(ctx context.Context) string {
+	userId, _ := ctx.Value(userIdContextKey{}).(string)
+	return userId
+}
 
-// func newAuthMiddleware(auth ports.AuthService) web.Middleware {
-// 	return func(next http.HandlerFunc) http.HandlerFunc {
-// 		return func(w http.ResponseWriter, r *http.Request) {
-// 			prefix := "Bearer "
-// 			authHeader := r.Header.Get("Authorization")
-// 			if authHeader == "" || !strings.HasPrefix(authHeader, prefix) {
-// 				web.WriteJSON(map[string]any{"message": "invalid authorization header"}, w)
-// 				return
-// 			}
-// 			tokenStr := strings.TrimPrefix(authHeader, prefix)
+func newAuthMiddleware(auth ports.AuthService) web.Middleware {
+	return func(next http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			prefix := "Bearer "
+			authHeader := r.Header.Get("Authorization")
+			if authHeader == "" || !strings.HasPrefix(authHeader, prefix) {
+				web.WriteJSON(map[string]any{"message": "invalid authorization header"}, w)
+				return
+			}
+			tokenStr := strings.TrimPrefix(authHeader, prefix)
 
-// 			resp, err := auth.VerifyToken(r.Context(), ports.VerifyTokenRequest{Token: tokenStr})
-// 			if err != nil {
-// 				web.WriteJSON(map[string]any{"message": "invalid or expried token"}, w)
-// 				return
-// 			}
+			resp, err := auth.VerifyToken(r.Context(), ports.VerifyTokenRequest{Token: tokenStr})
+			if err != nil {
+				web.WriteJSON(map[string]any{"message": "invalid or expried token"}, w)
+				return
+			}
 
-// 			userId := resp.UserId
-// 			dctx := context.WithValue(r.Context(), userIdContextKey{}, userId)
-// 			next(w, r.WithContext(dctx))
-// 		}
-// 	}
-// }
+			userId := resp.UserId
+			dctx := context.WithValue(r.Context(), userIdContextKey{}, userId)
+			next(w, r.WithContext(dctx))
+		}
+	}
+}

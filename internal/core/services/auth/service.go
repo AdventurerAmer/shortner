@@ -52,12 +52,13 @@ func (srv *service) Register(ctx context.Context, req ports.RegisterRequest) (po
 
 	now := time.Now().UTC()
 	user := &domain.User{
-		Email:        strings.ToLower(strings.TrimSpace(req.Email)),
-		DisplayName:  strings.TrimSpace(req.DisplayName),
-		PasswordHash: passwordHash,
-		IsVerified:   false,
-		CreatedAt:    now,
-		UpdatedAt:    now,
+		Email:           strings.ToLower(strings.TrimSpace(req.Email)),
+		DisplayName:     strings.TrimSpace(req.DisplayName),
+		PasswordHash:    passwordHash,
+		IsVerified:      false,
+		IsPendingDelete: false,
+		CreatedAt:       now,
+		UpdatedAt:       now,
 	}
 
 	txn := func(tctx context.Context) error {
@@ -192,7 +193,7 @@ func (srv *service) VerifyUser(ctx context.Context, req ports.VerifyUserRequest)
 			return fmt.Errorf("'UsersRepo.Update' failed: %w", err)
 		}
 
-		if err := srv.VerificationTokenManager.Invalidate(ctx, token); err != nil {
+		if err := srv.VerificationTokenManager.Use(ctx, token); err != nil {
 			return fmt.Errorf("'VerificationTokenManager.Update' failed: %w", err)
 		}
 
@@ -341,7 +342,7 @@ func (srv *service) ResetPassword(ctx context.Context, req ports.ResetPasswordRe
 			return fmt.Errorf("'UsersRepo.Update' failed: %w", err)
 		}
 
-		if err := srv.PasswordResetTokenManager.Invalidate(ctx, token); err != nil {
+		if err := srv.PasswordResetTokenManager.Use(ctx, token); err != nil {
 			return fmt.Errorf("'PasswordResetTokenManager.Invalidate' failed: %w", err)
 		}
 

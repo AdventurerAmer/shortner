@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
 	"github.com/AdventurerAmer/shortner/config"
+	"github.com/AdventurerAmer/shortner/internal/core/domain"
 	"github.com/AdventurerAmer/shortner/internal/core/ports"
 	"github.com/AdventurerAmer/shortner/logging"
 	"github.com/AdventurerAmer/shortner/telemetry"
@@ -30,7 +32,7 @@ func New(workerCfg *config.Worker, cfg *config.Config, consumer ports.Consumer, 
 	return app
 }
 
-func (app *App) Run(handler ports.ConsumerHandlerFunc) error {
+func (app *App) Run(handlers map[domain.Topic]ports.ConsumerHandlerFunc) error {
 	logger := app.logger
 
 	shutdown, err := telemetry.New(app.cfg, app.Name, app.Version)
@@ -55,12 +57,20 @@ func (app *App) Run(handler ports.ConsumerHandlerFunc) error {
 	logger.Info("consumer started")
 	defer logger.Info("consumer ended")
 
-	go func() {
-		for msg := range msgCh {
-			if err := app.handleMsg(ctx, msg, handler); err != nil {
-				logger.Error("failed to handle message", "error", err)
+	var wg sync.WaitGroup
+
+	for _, handler := range handlers {
+		wg.Go(func() {
+			for msg := range msgCh {
+				if err := app.handleMsg(ctx, msg, handler); err != nil {
+					logger.Error("failed to handle message", "error", err)
+				}
 			}
-		}
+		})
+	}
+
+	go func() {
+		wg.Wait()
 		close(done)
 	}()
 

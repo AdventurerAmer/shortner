@@ -75,7 +75,7 @@ func Run() int {
 	mux.Use(web.Recover(cfg.Env))
 	mux.Use(web.Timeout(serviceCfg.DefaultTimeout))
 
-	mux.Post("/v1/shorten", handlers.shorten)
+	mux.Post("/v1/shorten", nil, handlers.shorten)
 
 	app := web.New(serviceCfg, cfg, logger)
 	if err := app.Run(mux, readiness); err != nil {

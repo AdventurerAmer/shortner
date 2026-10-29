@@ -57,7 +57,7 @@ func Run() int {
 	consumer := brokers.NewKafkaConsumer(reader)
 	app := worker.New(&cfg.Workers.Clicks, cfg, consumer, logger)
 
-	h := func(ctx context.Context, msg ports.ConsumerMessage) error {
+	onClicks := func(ctx context.Context, msg ports.ConsumerMessage) error {
 		dctx, span := telemetry.NewSpan(ctx, "Clicks Worker: Handle",
 			telemetry.StrAttr("key", msg.Key))
 		defer span.End()
@@ -81,7 +81,10 @@ func Run() int {
 
 		return nil
 	}
-	if err := app.Run(h); err != nil {
+	handlers := map[domain.Topic]ports.ConsumerHandlerFunc{
+		domain.ClicksTopic: onClicks,
+	}
+	if err := app.Run(handlers); err != nil {
 		logger.Error("'app.Run' failed", "error", err)
 		return 1
 	}
